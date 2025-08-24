@@ -23,7 +23,7 @@ install: venv
 
 # Run app
 run:
-	$(PYTHON) -m myapp.main
+	$(PYTHON) -m oldrak.main
 
 # Run tests
 test:
@@ -32,7 +32,7 @@ test:
 # Build executable
 build:
 	$(PYTHON) -m pip install pyinstaller
-	$(PYTHON) -m PyInstaller --onefile --name myapp --icon=assets/icon.png myapp/main.py
+	$(PYTHON) -m PyInstaller --onefile --name oldrak --icon=assets/monk_icon_no_bg.png oldrak/main.py
 
 # Clean artifacts
 clean:
