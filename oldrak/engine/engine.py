@@ -1,6 +1,7 @@
 import keyboard
 
 from oldrak.shared import EngineState, EngineCommand
+from oldrak.os import Process
 
 class Engine:
     def __init__(self):
@@ -13,6 +14,8 @@ class Engine:
                 self.__state = EngineState.Stopped.value
                 break
 
-            print("Game loop is running...")
+            process = Process("Tibia")
+
+            print(process.pid())
 
         print("Game has ended.")
