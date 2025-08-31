@@ -1,5 +1,9 @@
+from oldrak.engine import Engine
+
 def main():
-    print("Hello from MyApp!")
+    engine = Engine()
+
+    engine.start()
 
 if __name__ == "__main__":
     main()

@@ -14,7 +14,7 @@ help:
 
 # Create venv
 venv:
-	python -m venv .venv
+	python3 -m venv .venv
 	$(PIP) install --upgrade pip
 
 # Install dependencies
