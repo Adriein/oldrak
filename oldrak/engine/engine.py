@@ -8,7 +8,7 @@ class Engine:
         self.__state = EngineState.Running.value
 
     def start(self):
-        while self.__state == EngineState.Running.value:
+        while self.__state is EngineState.Running.value:
             if keyboard.is_pressed(EngineCommand.Stop.value):
                 print("The 'p' key was pressed. Exiting the loop...")
                 self.__state = EngineState.Stopped.value
