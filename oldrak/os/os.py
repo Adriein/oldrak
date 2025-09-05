@@ -22,7 +22,5 @@ class Memory:
 class Process:
     def __init__(self, name: str):
         self.__memory = Memory()
-        self.__process_name = name
-
-    def pid(self) -> int|None:
-        return self.__memory.get_pid_by_name(self.__process_name)
+        self.name = name
+        self.pid = self.__memory.get_pid_by_name(self.name)
