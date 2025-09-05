@@ -1,21 +1,20 @@
 import os
 
 class Memory:
-    def
     def get_pid_by_name(self, name: str) -> int|None:
         for pid in os.listdir('/proc'):
-            if pid.isdigit():
-                try:
-                    with open(os.path.join('/proc', pid, 'cmdline'), 'r') as buff:
-                        if name in buff.read().strip():
-                            return int(pid)
+            if not pid.isdigit():
+                continue
 
-                except (IOError, FileNotFoundError):
-                    continue
+            try:
+                with open(os.path.join('/proc', pid, 'cmdline'), 'r') as buff:
+                    if name in buff.read().strip():
+                        return int(pid)
+
+            except (IOError, FileNotFoundError):
+                continue
 
         return None
-
-
 
 
 class Process:
