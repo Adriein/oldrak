@@ -6,16 +6,18 @@ from oldrak.os import Process
 
 class Engine:
     def __init__(self):
-        self.__state = EngineState.Running.value
-        self.__game = Process("Tibia")
+        self._state = None
+        self._game = Process("Tibia")
 
     def start(self):
-        while self.__state is EngineState.Running.value:
+        self._state = EngineState.Running
+
+        while self._state is EngineState.Running:
             if keyboard.is_pressed(EngineCommand.Stop.value):
                 print("The 'p' key was pressed. Exiting the loop...")
-                self.__state = EngineState.Stopped.value
+                self._state = EngineState.Stopped
                 break
 
-            print(self.__game.pid)
+            print(self._game.pid)
 
         print("Game has ended.")
