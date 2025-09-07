@@ -14,15 +14,18 @@ class Engine:
     async def start(self):
         self._state = EngineState.Running.value
 
-        proxy = Proxy([Network()])
-        await proxy.run()
+        proxy = Proxy(Network())
+
+        proxy.run()
 
         while self._state is EngineState.Running.value:
             if keyboard.is_pressed(EngineCommand.Stop.value):
-                print("The 'p' key was pressed. Exiting the loop...")
+                print(f"The {EngineCommand.Stop.value} key was pressed. Stopping the program...")
+
                 self._state = EngineState.Stopped.value
 
                 proxy.handle.cancel()
+
                 break
 
             await asyncio.sleep(0.1)
