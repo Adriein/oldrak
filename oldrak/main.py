@@ -1,9 +1,11 @@
+import asyncio
+
 from oldrak.engine import Engine
 
-def main():
+async def main():
     engine = Engine()
 
-    engine.start()
+    await engine.start()
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
