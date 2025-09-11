@@ -1,7 +1,6 @@
 import asyncio
 import os
 import subprocess
-from typing import List
 
 from mitmproxy.options import Options
 from mitmproxy.tools.dump import DumpMaster
@@ -17,7 +16,10 @@ class Proxy:
     def run(self):
         self.handle = asyncio.create_task(self._master.run())
 
+        os.environ["http_proxy"] = "http://localhost:8080"
+        os.environ["https_proxy"] = "https://localhost:8080"
+
         certificate_path = os.path.expanduser("~/.mitmproxy/mitmproxy-ca-cert.pem")
-        subprocess.run(["cp", certificate_path, "/usr/local/share/ca-certificates/mitmproxy.crt"])
-        subprocess.run(["update-ca-certificates"])
+        #subprocess.run(["cp", certificate_path, "/usr/local/share/ca-certificates/mitmproxy.crt"])
+        #subprocess.run(["update-ca-certificates"])
 
