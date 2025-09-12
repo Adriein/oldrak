@@ -1,9 +1,7 @@
-import asyncio
-
 import keyboard
 
 from oldrak.shared import EngineState, EngineCommand
-from oldrak.os import Process, Network, Proxy
+from oldrak.os import Process, Network
 
 
 class Engine:
@@ -11,12 +9,12 @@ class Engine:
         self._state = None
         self._game = Process("Tibia")
 
-    async def start(self):
+    def start(self):
         self._state = EngineState.Running.value
 
-        proxy = Proxy(Network())
+        proxy = Network()
 
-        proxy.run()
+        proxy.sniff()
 
         while self._state is EngineState.Running.value:
             if keyboard.is_pressed(EngineCommand.Stop.value):
@@ -24,11 +22,7 @@ class Engine:
 
                 self._state = EngineState.Stopped.value
 
-                proxy.handle.cancel()
-
                 break
-
-            await asyncio.sleep(0.1)
 
 
         print("Game has ended.")

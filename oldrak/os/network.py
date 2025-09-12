@@ -1,33 +1,16 @@
-from mitmproxy import http, tcp
+import asyncio
+from scapy.all import sniff, Raw, Packet
 
 
 class Network:
-    def __init__(self):
-        print("constructed network")
-        pass
+    def __init__(self,):
 
-    def request(self, http_flow: http.HTTPFlow):
-        """Handles a request packet.
+        self.handle: asyncio.Task[None]|None = None
 
-        Args:
-            http_flow (http.HTTPFlow): The HTTP flow to handle.
-        """
-        # Ignore requests, we only care about TCP messages.
-        print(f"\n -> {http_flow.request.pretty_url}: {http_flow.request.text[:1024]}")
+    def sniff(self,):
+        sniff(filter="tcp port 7171", prn= self._handle_tcp, store=0)
 
-    def response(self, http_flow: http.HTTPFlow):
-        """Handles a response packet.
+    def _handle_tcp(self, pkt: Packet) -> None:
+        print("pkt")
+        print(pkt)
 
-        Args:
-            http_flow (http.HTTPFlow): The HTTP flow to handle.
-        """
-        # Ignore responses, we only care about TCP messages.
-        print(f"\n <- {http_flow.request.pretty_url}: {http_flow.response.text[:1024]}")
-
-    def tcp_message(self, tcp_flow: tcp.TCPFlow):
-        print("tcp")
-        if tcp_flow.messages:
-            last_message = tcp_flow.messages[-1]
-            direction = "→ server" if last_message.from_client else "← client"
-            data = last_message.content
-            print(f"{direction} {len(data)} bytes: {data[:50]!r}")
