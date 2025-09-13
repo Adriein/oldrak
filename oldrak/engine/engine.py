@@ -12,9 +12,11 @@ class Engine:
     def start(self):
         self._state = EngineState.Running.value
 
-        proxy = Network()
+        return
 
-        proxy.sniff()
+        # proxy = Network()
+
+        # proxy.sniff()
 
         while self._state is EngineState.Running.value:
             if keyboard.is_pressed(EngineCommand.Stop.value):
