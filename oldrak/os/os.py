@@ -1,7 +1,8 @@
+import ctypes
 import os
 from typing import Union
 
-from PyMemoryEditor import OpenProcess
+from mem_edit import Process as MemEditProcess
 
 class Memory:
     ModeReadOnly = 'r'
@@ -22,10 +23,11 @@ class Memory:
         return None
 
     def find(self, pid: int, value: Union[int, str, float, bytearray]) -> None:
-        with OpenProcess(pid=pid) as process:
-            result = process.search_by_value(type(value), 8, value)
+        with MemEditProcess.open_process(process_id=pid) as process:
+            for address in process.search_all_memory((ctypes.c_char * len(value)).from_buffer(value), False):
+                print("mem_region")
+                print(address)
 
-            print(result)
 
             process.close()
 
@@ -48,12 +50,7 @@ class Debugger:
     def find_breakpoint_address(self, pid: int) -> None:
         # Look for the xtea decryption code using the magic number 0x61c88647 in memory.
         xtea_raw_code = "89cac1e20431da01c62d4786c861"  # As of 12.09.2024. Check assembly if changed.
-        xtea_code = bytearray()
-
-        for i in range(0, len(xtea_raw_code), 2):
-            xtea_code.append(int(xtea_raw_code[i:i + 2], 16))
-
-        self._memory.find(pid, xtea_code)
+        self._memory.find(pid, bytearray.fromhex(xtea_raw_code))
 
         # Convert to hex for gdb.
         #self.breakpoint_address = hex(address)
