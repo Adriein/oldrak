@@ -22,6 +22,7 @@ class Network:
 
             print("-" * 60)
 
+
 class TibiaServerTcpPacket:
     def __init__(
             self,
