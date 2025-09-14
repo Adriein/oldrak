@@ -1,7 +1,7 @@
 import keyboard
 
 from oldrak.shared import EngineState, EngineCommand
-from oldrak.os import Process, Network
+from oldrak.os import Process
 
 
 class Engine:
@@ -12,11 +12,8 @@ class Engine:
     def start(self):
         self._state = EngineState.Running.value
 
+        self._game.spy_network()
         return
-
-        proxy = Network()
-
-        proxy.sniff()
 
         while self._state is EngineState.Running.value:
             if keyboard.is_pressed(EngineCommand.Stop.value):

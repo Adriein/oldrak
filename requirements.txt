@@ -2,3 +2,4 @@ keyboard
 pytest
 scapy
 mem-edit
+xtea
