@@ -1,10 +1,13 @@
 import os
 import subprocess
 import asyncio
+import time
+import zlib
 
 from ctypes import c_char, c_long, c_float, Array
 from typing import Union
 
+import scapy
 from mem_edit import Process as MemEditProcess
 from scapy.all import Packet, Raw, sniff
 from scapy.layers.inet import IP, TCP
@@ -117,8 +120,6 @@ class Debugger:
         # Keys are in 0x00 format, convert to bytes.
         keys = [int(key, 16) for key in keys]
 
-        print(keys)
-
         # Write key to file for debugging purposes.
         with open("key.txt", "w") as f:
             f.write(",".join([str(k) for k in keys]))
@@ -137,9 +138,8 @@ class Network:
         if pkt.haslayer(TCP) and pkt.haslayer(Raw):
             try:
                 t_packet = TibiaServerTcpPacket.from_raw(pkt)
-                print(t_packet)
 
-                print(self._xtea.decrypt(t_packet.payload))
+                t_packet.parse(self._xtea)
             except Exception as e:
                 print(f"{e}")
 
@@ -155,16 +155,18 @@ class TibiaServerTcpPacket:
             dest_port: int,
             size: int,
             sequence: int,
-            compression: int,
+            is_compressed: bool,
             payload: bytes
     ) -> None:
+        self.decompressor = {}
+
         self.src = src
         self.dest = dest
         self.src_port = src_port
         self.dest_port = dest_port
         self.size = size
         self.sequence = sequence
-        self.compression = compression
+        self.is_compressed = is_compressed
         self.payload = payload
 
     @staticmethod
@@ -179,15 +181,18 @@ class TibiaServerTcpPacket:
         if len(raw_bytes) < 6:
             raise Exception("Too small to be a valid packet")
 
-        # First 2 bytes are the size of the payload in multiples of 8 bytes (minus the header) in little endian.
-        # I.e. Size 1 means 1 * 8 = Payload 8 bytes + 6 bytes header = 14 bytes total
-        size = int.from_bytes(raw_bytes[0:2], "little") * 8 + 6
+
+
+        # The first 2 bytes are the size of the payload in multiples of 8 bytes (minus the header) in little endian.
+        # I.e., Size 1 means 1 * 8 = Payload 8 bytes + 6 bytes header = 14 bytes total
+        size = int.from_bytes(raw_bytes[:2], "little") * 8 + 6
 
         # Next 2 bytes = sequence number
         sequence = int.from_bytes(raw_bytes[2:4], "little")
 
         # Next 2 bytes = compression flag
-        compression = int.from_bytes(raw_bytes[4:6], "little")
+        compression_flag = int.from_bytes(raw_bytes[4:6], "little")
+        is_compressed = bool(compression_flag)
 
         # The rest = payload
         payload = raw_bytes[6:]
@@ -199,13 +204,35 @@ class TibiaServerTcpPacket:
             dest_port,
             size,
             sequence,
-            compression,
+            is_compressed,
             payload
         )
 
     def __repr__(self) -> str:
         return (
             f"{self.src}:{self.src_port} -> {self.dest}:{self.dest_port}\n"
-            f"Size: {self.size} (bytes) | Seq: {self.sequence} | Comp: {self.compression}\n"
+            f"Size: {self.size} (bytes) | Seq: {self.sequence} | Comp: {self.is_compressed}\n"
             f"Payload ({len(self.payload)} bytes): {self.payload}"
         )
+
+    def parse(self, xtea: Xtea) -> None:
+        decrypted_payload = xtea.decrypt(self.payload)
+
+        #Remove junk bytes, the first byte indicates the byte padding (0-7)
+        padding = int.from_bytes(decrypted_payload[:1], "little")
+
+        real_payload = decrypted_payload[1 : len(decrypted_payload) - padding]
+
+        if self.is_compressed:
+            print("before decryption payload")
+            print(self.payload.hex(" "))
+            print("compressed payload")
+            print(decrypted_payload.hex(" "))
+            print("padding")
+            print(padding)
+            print("real payload")
+            print(real_payload)
+
+            return
+
+        self.payload = real_payload
