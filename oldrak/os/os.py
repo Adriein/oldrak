@@ -1,13 +1,11 @@
 import os
 import subprocess
 import asyncio
-import time
 import zlib
 
 from ctypes import c_char, c_long, c_float, Array
 from typing import Union
 
-import scapy
 from mem_edit import Process as MemEditProcess
 from scapy.all import Packet, Raw, sniff
 from scapy.layers.inet import IP, TCP
@@ -129,7 +127,7 @@ class Debugger:
 class Network:
     def __init__(self, keys: list[int]):
         self._xtea = Xtea(keys)
-        self.handle: asyncio.Task[None]|None = None
+        self.tcp_buffer: dict[tuple[str, int, str, int], bytearray] = {}
 
     def sniff(self,):
         sniff(filter="tcp port 7171", prn= self._handle_tcp, store=0)
@@ -137,9 +135,34 @@ class Network:
     def _handle_tcp(self, pkt: Packet) -> None:
         if pkt.haslayer(TCP) and pkt.haslayer(Raw):
             try:
-                t_packet = TibiaServerTcpPacket.from_raw(pkt)
+                stream_id = (pkt[IP].src, pkt[TCP].sport, pkt[IP].dst, pkt[TCP].dport)
+                payload = bytes(pkt[Raw].load)
 
-                t_packet.parse(self._xtea)
+                if stream_id not in self.tcp_buffer:
+                    self.tcp_buffer.setdefault(stream_id, bytearray())
+
+                buf = self.tcp_buffer[stream_id]
+                buf.extend(payload)
+
+                while True:
+                    if len(buf) < 2:
+                        break  # not enough to know packet length
+
+                    chunks = int.from_bytes(buf[:2], "little")
+                    size = chunks * 8 + 6
+
+                    if len(buf) < size:
+                        break  # wait for more data
+
+                    packet_bytes = bytes(buf[:size])
+
+                    del buf[:size]  # consume
+
+                    t_packet = TibiaServerTcpPacket.from_raw(stream_id, packet_bytes)
+                    print("packet")
+                    print(t_packet)
+                    t_packet.parse(self._xtea)
+
             except Exception as e:
                 print(f"{e}")
 
@@ -170,18 +193,12 @@ class TibiaServerTcpPacket:
         self.payload = payload
 
     @staticmethod
-    def from_raw(pkt: Packet) -> 'TibiaServerTcpPacket':
-        src = pkt[IP].src
-        dest = pkt[IP].dst
-        src_port = pkt[TCP].sport
-        dest_port = pkt[TCP].dport
-        data = pkt[Raw].load
-        raw_bytes = bytes(data)
+    def from_raw(stream_id: tuple[str, int, str, int], buf: bytes) -> 'TibiaServerTcpPacket':
+        src, src_port, dest, dest_port = stream_id
+        raw_bytes = buf
 
         if len(raw_bytes) < 6:
             raise Exception("Too small to be a valid packet")
-
-
 
         # The first 2 bytes are the size of the payload in multiples of 8 bytes (minus the header) in little endian.
         # I.e., Size 1 means 1 * 8 = Payload 8 bytes + 6 bytes header = 14 bytes total
@@ -211,8 +228,8 @@ class TibiaServerTcpPacket:
     def __repr__(self) -> str:
         return (
             f"{self.src}:{self.src_port} -> {self.dest}:{self.dest_port}\n"
-            f"Size: {self.size} (bytes) | Seq: {self.sequence} | Comp: {self.is_compressed}\n"
-            f"Payload ({len(self.payload)} bytes): {self.payload}"
+            f"Total size: {self.size} (bytes) | Seq: {self.sequence} | Comp: {self.is_compressed}\n"
+            f"Payload ({len(self.payload)} bytes): {self.payload.hex(" ")}"
         )
 
     def parse(self, xtea: Xtea) -> None:
@@ -224,15 +241,7 @@ class TibiaServerTcpPacket:
         real_payload = decrypted_payload[1 : len(decrypted_payload) - padding]
 
         if self.is_compressed:
-            print("before decryption payload")
-            print(self.payload.hex(" "))
-            print("compressed payload")
-            print(decrypted_payload.hex(" "))
-            print("padding")
-            print(padding)
-            print("real payload")
-            print(real_payload)
-
+            zlib.decompress(real_payload, -15)
             return
 
         self.payload = real_payload
