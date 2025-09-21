@@ -1,6 +1,7 @@
 import os
 import subprocess
 import asyncio
+import sys
 import zlib
 
 from ctypes import c_char, c_long, c_float, Array
@@ -128,6 +129,7 @@ class Network:
     def __init__(self, keys: list[int]):
         self._xtea = Xtea(keys)
         self.tcp_buffer: dict[tuple[str, int, str, int], bytearray] = {}
+        self.decompressors = {}
 
     def sniff(self,):
         sniff(filter="tcp port 7171", prn= self._handle_tcp, store=0)
@@ -144,6 +146,8 @@ class Network:
                 buf = self.tcp_buffer[stream_id]
                 buf.extend(payload)
 
+                t_packet = None
+
                 while True:
                     if len(buf) < 2:
                         break  # not enough to know packet length
@@ -159,9 +163,13 @@ class Network:
                     del buf[:size]  # consume
 
                     t_packet = TibiaServerTcpPacket.from_raw(stream_id, packet_bytes)
-                    print("packet")
-                    print(t_packet)
-                    t_packet.parse(self._xtea)
+
+                t_packet.decrypt(self._xtea)
+
+                if t_packet.is_compressed:
+                    return
+
+                print(t_packet)
 
             except Exception as e:
                 print(f"{e}")
@@ -200,8 +208,7 @@ class TibiaServerTcpPacket:
         if len(raw_bytes) < 6:
             raise Exception("Too small to be a valid packet")
 
-        # The first 2 bytes are the size of the payload in multiples of 8 bytes (minus the header) in little endian.
-        # I.e., Size 1 means 1 * 8 = Payload 8 bytes + 6 bytes header = 14 bytes total
+        # The first 2 bytes are the size of the payload in multiples of 8 bytes in little endian.
         size = int.from_bytes(raw_bytes[:2], "little") * 8 + 6
 
         # Next 2 bytes = sequence number
@@ -232,16 +239,36 @@ class TibiaServerTcpPacket:
             f"Payload ({len(self.payload)} bytes): {self.payload.hex(" ")}"
         )
 
-    def parse(self, xtea: Xtea) -> None:
+    def decrypt(self, xtea: Xtea) -> None:
         decrypted_payload = xtea.decrypt(self.payload)
 
         #Remove junk bytes, the first byte indicates the byte padding (0-7)
         padding = int.from_bytes(decrypted_payload[:1], "little")
 
-        real_payload = decrypted_payload[1 : len(decrypted_payload) - padding]
 
-        if self.is_compressed:
-            zlib.decompress(real_payload, -15)
-            return
+        self.payload = decrypted_payload[1 : len(decrypted_payload) - padding]
 
-        self.payload = real_payload
+    def decompress(self, decompressor) -> bytes|None:
+        if not self.is_compressed:
+            return self.payload
+
+        try:
+            print(f"Feeding {len(self.payload)} bytes to decompressor: {self.payload.hex(' ')}")
+
+            # Feed the payload to the persistent decompressor
+            decompressed = decompressor.decompress(self.payload)
+
+            print(f"Decompressor returned {len(decompressed)} bytes")
+            if decompressed:
+                print(f"Decompressed data: {decompressed.hex(' ')}")
+
+            # Check if there's unconsumed data (shouldn't happen with proper streaming)
+            if decompressor.unconsumed_tail:
+                print(f"Warning: Unconsumed data: {decompressor.unconsumed_tail.hex(' ')}")
+
+            return decompressed
+
+        except zlib.error as e:
+            print(f"Streaming decompression error: {e}")
+            # Don't return anything - let the caller handle this
+            return None
