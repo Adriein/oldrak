@@ -129,7 +129,7 @@ class Network:
     def __init__(self, keys: list[int]):
         self._xtea = Xtea(keys)
         self.tcp_buffer: dict[tuple[str, int, str, int], bytearray] = {}
-        self.decompressors = {}
+        self.incomplete_packets: dict[tuple[str, int, str, int], bytearray] = {}
 
     def sniff(self,):
         sniff(filter="tcp port 7171", prn= self._handle_tcp, store=0)
@@ -146,38 +146,55 @@ class Network:
                 buf = self.tcp_buffer[stream_id]
                 buf.extend(payload)
 
-                t_packet = None
-
-                while True:
-                    if len(buf) < 2:
-                        break  # not enough to know packet length
-
-                    chunks = int.from_bytes(buf[:2], "little")
-                    size = chunks * 8 + 6
-
-                    if len(buf) < size:
-                        break  # wait for more data
-
-                    packet_bytes = bytes(buf[:size])
-
-                    del buf[:size]  # consume
-
-                    t_packet = TibiaServerTcpPacket.from_raw(stream_id, packet_bytes)
-
+                t_packet = TibiaTcpPacket.from_raw(stream_id, payload)
+                print(t_packet)
                 t_packet.decrypt(self._xtea)
 
                 if t_packet.is_compressed:
-                    return
+                    t_packet.decompress()
 
                 print(t_packet)
+                print("-" * 60)
+                t_packet = None
+
+                # while True:
+                #     if len(buf) < 2:
+                #         break  # not enough to know packet length
+                #
+                #     size = int.from_bytes(buf[:2], "little") * 8
+                #
+                #     if len(buf) < size:
+                #         if stream_id not in self.incomplete_packets:
+                #             self.incomplete_packets.setdefault(stream_id, bytearray())
+                #
+                #         incomplete_buf = self.incomplete_packets[stream_id]
+                #         incomplete_buf.extend(buf)
+                #
+                #         break  # wait for more data
+                #
+                #     packet_bytes = bytes(buf[:size])
+                #
+                #     del buf[:size]  # consume
+                #
+                #     t_packet = TibiaTcpPacket.from_raw(stream_id, packet_bytes)
+                #
+                # t_packet.decrypt(self._xtea)
+                #
+                # if t_packet.is_compressed:
+                #     print(t_packet)
+                #     t_packet.decompress()
+                #     print("-" * 60)
+                #     return
+                #
+                # print(t_packet)
+                # print("-" * 60)
 
             except Exception as e:
                 print(f"{e}")
 
-            print("-" * 60)
 
 
-class TibiaServerTcpPacket:
+class TibiaTcpPacket:
     def __init__(
             self,
             src: str,
@@ -189,8 +206,6 @@ class TibiaServerTcpPacket:
             is_compressed: bool,
             payload: bytes
     ) -> None:
-        self.decompressor = {}
-
         self.src = src
         self.dest = dest
         self.src_port = src_port
@@ -201,7 +216,7 @@ class TibiaServerTcpPacket:
         self.payload = payload
 
     @staticmethod
-    def from_raw(stream_id: tuple[str, int, str, int], buf: bytes) -> 'TibiaServerTcpPacket':
+    def from_raw(stream_id: tuple[str, int, str, int], buf: bytes) -> 'TibiaTcpPacket':
         src, src_port, dest, dest_port = stream_id
         raw_bytes = buf
 
@@ -209,7 +224,7 @@ class TibiaServerTcpPacket:
             raise Exception("Too small to be a valid packet")
 
         # The first 2 bytes are the size of the payload in multiples of 8 bytes in little endian.
-        size = int.from_bytes(raw_bytes[:2], "little") * 8 + 6
+        size = int.from_bytes(raw_bytes[:2], "little") * 8
 
         # Next 2 bytes = sequence number
         sequence = int.from_bytes(raw_bytes[2:4], "little")
@@ -221,7 +236,7 @@ class TibiaServerTcpPacket:
         # The rest = payload
         payload = raw_bytes[6:]
 
-        return TibiaServerTcpPacket(
+        return TibiaTcpPacket(
             src,
             dest,
             src_port,
@@ -243,32 +258,26 @@ class TibiaServerTcpPacket:
         decrypted_payload = xtea.decrypt(self.payload)
 
         #Remove junk bytes, the first byte indicates the byte padding (0-7)
-        padding = int.from_bytes(decrypted_payload[:1], "little")
+        #padding = int.from_bytes(decrypted_payload[:1], "little")
 
+        self.payload = decrypted_payload
+        #self.payload = decrypted_payload[1 : len(decrypted_payload) - padding]
 
-        self.payload = decrypted_payload[1 : len(decrypted_payload) - padding]
-
-    def decompress(self, decompressor) -> bytes|None:
+    def decompress(self) -> bytes|None:
         if not self.is_compressed:
             return self.payload
 
         try:
-            print(f"Feeding {len(self.payload)} bytes to decompressor: {self.payload.hex(' ')}")
-
-            # Feed the payload to the persistent decompressor
-            decompressed = decompressor.decompress(self.payload)
-
-            print(f"Decompressor returned {len(decompressed)} bytes")
-            if decompressed:
-                print(f"Decompressed data: {decompressed.hex(' ')}")
-
-            # Check if there's unconsumed data (shouldn't happen with proper streaming)
-            if decompressor.unconsumed_tail:
-                print(f"Warning: Unconsumed data: {decompressor.unconsumed_tail.hex(' ')}")
-
-            return decompressed
+            print(f"Feeding raw payload ({len(self.payload)} bytes) to decompressor: {self.payload.hex(' ')}")
+            zlib.decompress(self.payload, -zlib.MAX_WBITS)
 
         except zlib.error as e:
             print(f"Streaming decompression error: {e}")
-            # Don't return anything - let the caller handle this
-            return None
+            try:
+                print(f"Feeding payload without size header ({len(self.payload[1:])} bytes) to decompressor: {self.payload[1:].hex(' ')}")
+                zlib.decompress(self.payload[1:], -zlib.MAX_WBITS)
+            except zlib.error as e:
+                print(f"Second streaming decompression error: {e}")
+
+    def is_client_packet(self) -> bool:
+        return self.src_port != 7171
