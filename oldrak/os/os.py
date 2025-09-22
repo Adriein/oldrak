@@ -147,14 +147,23 @@ class Network:
                 buf.extend(payload)
 
                 t_packet = TibiaTcpPacket.from_raw(stream_id, payload)
-                print(t_packet)
+
                 t_packet.decrypt(self._xtea)
 
                 if t_packet.is_compressed:
-                    t_packet.decompress()
+                    print(t_packet)
+                    print(t_packet.payload)
+                    print("-" * 60)
+                    return
+                    # Always failing because header says for example 8 bytes but we have 8 bytes header that are
+                    # (1 byte padding -> 02) meaning i have to eliminate 2 bytes, now the payload is 8 - 3 = 5 so i need more info from the
+                    # next sequence packet
+                    # t_packet.decompress()
 
-                print(t_packet)
-                print("-" * 60)
+
+                #I've seen a not compressed packet where payload > header which means 2 command in the same payload, handle that case
+                #print(t_packet)
+                #print("-" * 60)
                 t_packet = None
 
                 # while True:
