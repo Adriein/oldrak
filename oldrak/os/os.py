@@ -129,7 +129,7 @@ class Network:
     def __init__(self, keys: list[int]):
         self._xtea = Xtea(keys)
         self.tcp_buffer: dict[tuple[str, int, str, int], bytearray] = {}
-        self.incomplete_packets: dict[tuple[str, int, str, int], bytearray] = {}
+        self.decompressor = {}
 
     def sniff(self,):
         sniff(filter="tcp port 7171", prn= self._handle_tcp, store=0)
@@ -137,6 +137,7 @@ class Network:
     def _handle_tcp(self, pkt: Packet) -> None:
         if pkt.haslayer(TCP) and pkt.haslayer(Raw):
             try:
+                print(pkt.summary())
                 stream_id = (pkt[IP].src, pkt[TCP].sport, pkt[IP].dst, pkt[TCP].dport)
                 payload = bytes(pkt[Raw].load)
 
@@ -146,14 +147,16 @@ class Network:
                 buf = self.tcp_buffer[stream_id]
                 buf.extend(payload)
 
+                if stream_id not in self.decompressor:
+                    self.decompressor.setdefault(stream_id, zlib.decompressobj(-zlib.MAX_WBITS))
+
                 t_packet = TibiaTcpPacket.from_raw(stream_id, payload)
 
                 t_packet.decrypt(self._xtea)
 
                 if t_packet.is_compressed:
-                    print(t_packet)
-                    print(t_packet.payload)
-                    print("-" * 60)
+                    #t_packet.decompress(self.decompressor[stream_id])
+
                     return
                     # Always failing because header says for example 8 bytes but we have 8 bytes header that are
                     # (1 byte padding -> 02) meaning i have to eliminate 2 bytes, now the payload is 8 - 3 = 5 so i need more info from the
@@ -267,26 +270,25 @@ class TibiaTcpPacket:
         decrypted_payload = xtea.decrypt(self.payload)
 
         #Remove junk bytes, the first byte indicates the byte padding (0-7)
-        #padding = int.from_bytes(decrypted_payload[:1], "little")
+        padding = int.from_bytes(decrypted_payload[:1], "little")
 
-        self.payload = decrypted_payload
-        #self.payload = decrypted_payload[1 : len(decrypted_payload) - padding]
+        self.payload = decrypted_payload[1 : len(decrypted_payload) - padding]
 
-    def decompress(self) -> bytes|None:
+    def decompress(self, decompressor: 'zlib.decompressobj') -> bytes|None:
         if not self.is_compressed:
             return self.payload
 
         try:
-            print(f"Feeding raw payload ({len(self.payload)} bytes) to decompressor: {self.payload.hex(' ')}")
-            zlib.decompress(self.payload, -zlib.MAX_WBITS)
+            out = decompressor.decompress(self.payload)
+
+            # Optional monitoring info
+            print(f"Decompressed {len(out)} bytes")
+            print(f"Bytes consumed from payload: {len(self.payload) - len(decompressor.unconsumed_tail)}")
+            print(f"Unconsumed tail length: {len(decompressor.unconsumed_tail)}")
+            print(f"Unused data length: {len(decompressor.unused_data)}")
 
         except zlib.error as e:
             print(f"Streaming decompression error: {e}")
-            try:
-                print(f"Feeding payload without size header ({len(self.payload[1:])} bytes) to decompressor: {self.payload[1:].hex(' ')}")
-                zlib.decompress(self.payload[1:], -zlib.MAX_WBITS)
-            except zlib.error as e:
-                print(f"Second streaming decompression error: {e}")
 
     def is_client_packet(self) -> bool:
         return self.src_port != 7171
