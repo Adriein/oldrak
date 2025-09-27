@@ -71,11 +71,10 @@ class Process:
         self._debugger = debugger
         self._network = network
 
-        self.name = None
+        self.name = 'Tibia'
         self.pid = None
 
-    def hook_to(self, name: str) -> bool:
-        self.name = name
+    def hook(self,) -> bool:
         self.pid = self._memory.get_pid_by_name(self.name)
 
         return self.pid is not None

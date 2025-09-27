@@ -7,5 +7,3 @@ class EngineState(Enum):
 
 class EngineCommand(Enum):
     Stop = 'p'
-
-TIBIA = 'Tibia'

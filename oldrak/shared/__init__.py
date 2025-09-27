@@ -1,1 +1,1 @@
-from oldrak.shared.constants import EngineState, EngineCommand, TIBIA
+from oldrak.shared.constants import EngineState, EngineCommand
