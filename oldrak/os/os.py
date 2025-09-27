@@ -81,9 +81,9 @@ class Process:
 
 
     def spy_network(self) -> None:
-        decrypt_keys = self._debugger.get_xtea_decode_key(self.pid)
+        #decrypt_keys = self._debugger.get_xtea_decode_key(self.pid)
 
-        self._network.sniff(decrypt_keys)
+        self._network.sniff()
 
 
 class Debugger:
@@ -135,8 +135,8 @@ class Network:
         self.tcp_buffer: dict[tuple[str, int, str, int], bytearray] = {}
         self.decompressor = {}
 
-    def sniff(self, decrypt_keys: list[int]):
-        self._xtea = Xtea(decrypt_keys)
+    def sniff(self,):
+        #self._xtea = Xtea(decrypt_keys)
 
         sniff(filter="tcp port 7171", prn= self._handle_tcp, store=0)
 
@@ -157,10 +157,11 @@ class Network:
 
                 t_packet = TibiaTcpPacket.from_raw(stream_id, payload)
 
-                t_packet.decrypt(self._xtea)
+                #t_packet.decrypt(self._xtea)
 
                 if t_packet.is_compressed:
-                    print(t_packet)
+                    #print(t_packet)
+                    #print("-" * 60)
                     #t_packet.decompress(self.decompressor[stream_id])
 
                     return
@@ -171,8 +172,8 @@ class Network:
 
 
                 #I've seen a not compressed packet where payload > header which means 2 command in the same payload, handle that case
-                #print(t_packet)
-                #print("-" * 60)
+                print(t_packet)
+                print("-" * 60)
                 t_packet = None
 
                 # while True:
