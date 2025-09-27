@@ -137,7 +137,6 @@ class Network:
     def _handle_tcp(self, pkt: Packet) -> None:
         if pkt.haslayer(TCP) and pkt.haslayer(Raw):
             try:
-                print(pkt.summary())
                 stream_id = (pkt[IP].src, pkt[TCP].sport, pkt[IP].dst, pkt[TCP].dport)
                 payload = bytes(pkt[Raw].load)
 
@@ -155,6 +154,7 @@ class Network:
                 t_packet.decrypt(self._xtea)
 
                 if t_packet.is_compressed:
+                    print(t_packet)
                     #t_packet.decompress(self.decompressor[stream_id])
 
                     return
