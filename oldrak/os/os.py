@@ -1,7 +1,5 @@
 import os
 import subprocess
-import asyncio
-import sys
 import zlib
 
 from ctypes import c_char, c_long, c_float, Array
@@ -68,18 +66,25 @@ class Memory:
 
 
 class Process:
-    def __init__(self, name: str):
-        self._memory = Memory()
-        self._debugger = Debugger(self._memory)
+    def __init__(self, memory: 'Memory', network: 'Network', debugger: 'Debugger'):
+        self._memory = memory
+        self._debugger = debugger
+        self._network = network
 
+        self.name = None
+        self.pid = None
+
+    def hook_to(self, name: str) -> bool:
         self.name = name
         self.pid = self._memory.get_pid_by_name(self.name)
-        self.keys = self._debugger.get_xtea_decode_key(self.pid)
+
+        return self.pid is not None
+
 
     def spy_network(self) -> None:
-        network = Network(self.keys)
+        decrypt_keys = self._debugger.get_xtea_decode_key(self.pid)
 
-        network.sniff()
+        self._network.sniff(decrypt_keys)
 
 
 class Debugger:
@@ -126,12 +131,14 @@ class Debugger:
         return keys
 
 class Network:
-    def __init__(self, keys: list[int]):
-        self._xtea = Xtea(keys)
+    def __init__(self):
+        self._xtea = None
         self.tcp_buffer: dict[tuple[str, int, str, int], bytearray] = {}
         self.decompressor = {}
 
-    def sniff(self,):
+    def sniff(self, decrypt_keys: list[int]):
+        self._xtea = Xtea(decrypt_keys)
+
         sniff(filter="tcp port 7171", prn= self._handle_tcp, store=0)
 
     def _handle_tcp(self, pkt: Packet) -> None:

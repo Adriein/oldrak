@@ -1,27 +1,38 @@
+import time
+
 import keyboard
 
-from oldrak.shared import EngineState, EngineCommand
+from oldrak.os.os import Memory, Network, Debugger
+from oldrak.shared import EngineState, EngineCommand, TIBIA
 from oldrak.os import Process
 
 
 class Engine:
     def __init__(self):
+        memory = Memory()
+        self._process = Process(memory, Network(), Debugger(memory))
         self._state = None
-        self._game = Process("Tibia")
 
     def start(self):
-        self._state = EngineState.Running.value
+        self._state = EngineState.Running
 
-        self._game.spy_network()
-        return
+        is_hooked = self._process.hook_to(TIBIA)
 
-        while self._state is EngineState.Running.value:
-            if keyboard.is_pressed(EngineCommand.Stop.value):
-                print(f"The {EngineCommand.Stop.value} key was pressed. Stopping the program...")
+        keyboard.add_hotkey(EngineCommand.Stop.value, self._shutdown)
 
-                self._state = EngineState.Stopped.value
+        while self._state is EngineState.Running:
+            if not is_hooked:
+                is_hooked = self._process.hook_to(TIBIA)
 
-                break
+                print("Tibia is not running...")
+
+                time.sleep(0.5)
+
+                continue
 
 
-        print("Game has ended.")
+        print("Oldrak engine stopped.")
+
+    def _shutdown(self):
+        print(f"The {EngineCommand.Stop.value} key was pressed. Stopping oldrak engine...")
+        self._state = EngineState.Stopped
