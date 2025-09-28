@@ -1,15 +1,24 @@
-import cv2
 import numpy as np
 import mss
 import threading
 import queue
 
+import pyautogui
+
+
 class Video:
-    def __init__(self, monitor: dict):
-        self.monitor = monitor
+    def __init__(self):
         self.frame_queue = queue.Queue(maxsize=5)
         self._running = False
         self._thread = None
+
+        screen_width, screen_height = pyautogui.size()
+        self.monitor = {
+            "top": 0,
+            "left": 0,
+            "width": screen_width,
+            "height": screen_height
+        }
 
     def start(self):
         if self._running:
@@ -27,7 +36,10 @@ class Video:
     def _capture_worker(self):
         with mss.mss() as sct:
             while self._running:
-                frame = np.array(sct.grab(self.monitor))[:, :, :3]
+                sct_img = sct.grab(self.monitor)
+
+                frame = np.frombuffer(sct_img.rgb, dtype=np.uint8)
+                frame = frame.reshape((sct_img.height, sct_img.width, 3))
                 try:
                     self.frame_queue.put(frame, timeout=0.1)
                 except queue.Full:

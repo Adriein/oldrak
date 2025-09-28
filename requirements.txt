@@ -6,3 +6,4 @@ xtea
 opencv-python
 numpy
 mss
+pyautogui

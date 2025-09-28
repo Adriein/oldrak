@@ -3,12 +3,12 @@ import time
 import keyboard
 
 from oldrak.shared import EngineState, EngineCommand
-from oldrak.os import Process, Memory, Network, Debugger
+from oldrak.os import Process, Memory, Network, Debugger, Video
 
 
 class Engine:
     def __init__(self):
-        self._game = Process(Memory(), Network(), Debugger(Memory()))
+        self._game = Process(Memory(), Network(), Debugger(Memory()), Video())
         self._state = None
 
     def start(self):

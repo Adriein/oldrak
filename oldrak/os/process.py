@@ -1,13 +1,15 @@
 from oldrak.os.memory import Memory
 from oldrak.os.network import Network
 from oldrak.os.debugger import Debugger
+from oldrak.os.video import Video
 
 
 class Process:
-    def __init__(self, memory: Memory, network: Network, debugger: Debugger):
+    def __init__(self, memory: Memory, network: Network, debugger: Debugger, video: Video):
         self._memory = memory
         self._debugger = debugger
         self._network = network
+        self._video = video
 
         self.name = 'Tibia'
         self.pid = None
@@ -26,3 +28,6 @@ class Process:
     def abort_spy_network(self) -> None:
         self._network.sniffer.stop()
         self._network.sniffer = None
+
+    def abort_video_capture(self) -> None:
+        self._video.stop()
