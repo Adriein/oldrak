@@ -5,10 +5,9 @@ import queue
 
 import pyautogui
 
-
 class Video:
     def __init__(self):
-        self.frame_queue = queue.Queue(maxsize=5)
+        self.frame_queue: queue.Queue[np.ndarray] = queue.Queue(maxsize=20)
         self._running = False
         self._thread = None
 
@@ -40,14 +39,15 @@ class Video:
 
                 frame = np.frombuffer(sct_img.rgb, dtype=np.uint8)
                 frame = frame.reshape((sct_img.height, sct_img.width, 3))
-                try:
-                    self.frame_queue.put(frame, timeout=0.1)
-                except queue.Full:
-                    pass  # drop frame if queue is full
 
-    def get_frame(self, timeout: float = 0.1):
-        """Return latest frame or None if not available"""
+                try:
+                    self.frame_queue.put_nowait(frame)
+                except queue.Full:
+                    self.frame_queue.get_nowait()
+                    self.frame_queue.put_nowait(frame)
+
+    def get_frame(self):
         try:
-            return self.frame_queue.get(timeout=timeout)
+            return self.frame_queue.get_nowait()
         except queue.Empty:
             return None
