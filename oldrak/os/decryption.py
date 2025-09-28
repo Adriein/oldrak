@@ -1,6 +1,6 @@
 import sys
 
-from xtea import new, MODE_ECB, XTEACipher
+from xtea import new, MODE_ECB
 
 class Xtea:
     def __init__(self, keys: list[int]):

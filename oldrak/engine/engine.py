@@ -2,9 +2,8 @@ import time
 
 import keyboard
 
-from oldrak.os.os import Memory, Network, Debugger
 from oldrak.shared import EngineState, EngineCommand
-from oldrak.os import Process
+from oldrak.os import Process, Memory, Network, Debugger
 
 
 class Engine:
