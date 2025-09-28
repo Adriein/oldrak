@@ -6,7 +6,7 @@ from ctypes import c_char, c_long, c_float, Array
 from typing import Union
 
 from mem_edit import Process as MemEditProcess
-from scapy.all import Packet, Raw, sniff
+from scapy.all import Packet, Raw, AsyncSniffer
 from scapy.layers.inet import IP, TCP
 
 from oldrak.os.xtea import Xtea
@@ -74,16 +74,20 @@ class Process:
         self.name = 'Tibia'
         self.pid = None
 
-    def hook(self,) -> bool:
+    def hook(self,) -> None:
         self.pid = self._memory.get_pid_by_name(self.name)
-
-        return self.pid is not None
 
 
     def spy_network(self) -> None:
         #decrypt_keys = self._debugger.get_xtea_decode_key(self.pid)
+        if self._network.sniffer is not None:
+            return
 
         self._network.sniff()
+
+    def abort_spy_network(self) -> None:
+        self._network.sniffer.stop()
+        self._network.sniffer = None
 
 
 class Debugger:
@@ -134,11 +138,12 @@ class Network:
         self._xtea = None
         self.tcp_buffer: dict[tuple[str, int, str, int], bytearray] = {}
         self.decompressor = {}
+        self.sniffer = None
 
     def sniff(self,):
         #self._xtea = Xtea(decrypt_keys)
-
-        sniff(filter="tcp port 7171", prn= self._handle_tcp, store=0)
+        self.sniffer = AsyncSniffer(filter="tcp port 7171", prn= self._handle_tcp, store=0)
+        self.sniffer.start()
 
     def _handle_tcp(self, pkt: Packet) -> None:
         if pkt.haslayer(TCP) and pkt.haslayer(Raw):

@@ -9,22 +9,21 @@ from oldrak.os import Process
 
 class Engine:
     def __init__(self):
-        memory = Memory()
-        self._game = Process(memory, Network(), Debugger(memory))
+        self._game = Process(Memory(), Network(), Debugger(Memory()))
         self._state = None
 
     def start(self):
         self._state = EngineState.Running
 
-        is_hooked = self._game.hook()
+        self._set_stop_handler()
 
-        keyboard.add_hotkey(EngineCommand.Stop.value, self._shutdown)
+        self._game.hook()
 
         while self._state is EngineState.Running:
-            if not is_hooked:
-                is_hooked = self._game.hook()
-
+            if self._game.pid is None:
                 print("Tibia is not running...")
+
+                self._game.hook()
 
                 time.sleep(0.5)
 
@@ -35,6 +34,10 @@ class Engine:
 
         print("Oldrak engine stopped.")
 
+    def _set_stop_handler(self):
+        keyboard.add_hotkey(EngineCommand.Stop.value, self._shutdown)
+
     def _shutdown(self):
         print(f"The {EngineCommand.Stop.value} key was pressed. Stopping oldrak engine...")
         self._state = EngineState.Stopped
+        self._game.abort_spy_network()

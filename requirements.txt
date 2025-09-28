@@ -3,3 +3,6 @@ pytest
 scapy
 mem-edit
 xtea
+opencv-python
+numpy
+mss
