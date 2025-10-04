@@ -4,6 +4,7 @@ import keyboard
 
 from oldrak.shared import EngineState, EngineCommand
 from oldrak.os import Process, Memory, Network, Debugger, Video
+from oldrak.engine.session import GameSession
 
 
 class Engine:
@@ -29,7 +30,7 @@ class Engine:
                 continue
 
             self._game.spy_network()
-            self._game.capture_video()
+            video_stream = self._game.capture_video()
 
 
 

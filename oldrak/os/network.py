@@ -5,6 +5,7 @@ from scapy.all import Packet, Raw, AsyncSniffer
 from scapy.layers.inet import IP, TCP
 
 from oldrak.os.packet import TibiaTcpPacket
+from oldrak.os.decryption import Xtea
 
 
 class Network:
@@ -14,8 +15,8 @@ class Network:
         self.decompressor = {}
         self.sniffer = None
 
-    def sniff(self,):
-        #self._xtea = Xtea(decrypt_keys)
+    def sniff(self, decrypt_keys: list[int]):
+        self._xtea = Xtea(decrypt_keys)
         self.sniffer = AsyncSniffer(filter="tcp port 7171", prn= self._handle_tcp, store=0)
         self.sniffer.start()
 
@@ -28,64 +29,23 @@ class Network:
                 if stream_id not in self.tcp_streams:
                     self.tcp_streams.setdefault(stream_id, queue.Queue())
 
-                buf = self.tcp_streams[stream_id]
-                buf.put_nowait(TibiaTcpPacket.from_raw(stream_id, payload))
-
                 if stream_id not in self.decompressor:
                     self.decompressor.setdefault(stream_id, zlib.decompressobj(-zlib.MAX_WBITS))
 
                 t_packet = TibiaTcpPacket.from_raw(stream_id, payload)
 
-                #t_packet.decrypt(self._xtea)
+                if t_packet.size < len(t_packet.payload):
+                    print(f"Packet size is smaller than payload size, this means 2 commands in the same packet")
+                    return
 
                 if t_packet.is_compressed:
-                    #print(t_packet)
-                    #print("-" * 60)
-                    #t_packet.decompress(self.decompressor[stream_id])
-
+                    print(f"Packet compressed, skipping")
                     return
-                    # Always failing because header says for example 8 bytes but we have 8 bytes header that are
-                    # (1 byte padding -> 02) meaning i have to eliminate 2 bytes, now the payload is 8 - 3 = 5 so i need more info from the
-                    # next sequence packet
-                    # t_packet.decompress()
 
+                t_packet.decrypt(self._xtea)
 
-                #I've seen a not compressed packet where payload > header which means 2 command in the same payload, handle that case
-                print(t_packet)
-                print("-" * 60)
-                t_packet = None
-
-                # while True:
-                #     if len(buf) < 2:
-                #         break  # not enough to know packet length
-                #
-                #     size = int.from_bytes(buf[:2], "little") * 8
-                #
-                #     if len(buf) < size:
-                #         if stream_id not in self.incomplete_packets:
-                #             self.incomplete_packets.setdefault(stream_id, bytearray())
-                #
-                #         incomplete_buf = self.incomplete_packets[stream_id]
-                #         incomplete_buf.extend(buf)
-                #
-                #         break  # wait for more data
-                #
-                #     packet_bytes = bytes(buf[:size])
-                #
-                #     del buf[:size]  # consume
-                #
-                #     t_packet = TibiaTcpPacket.from_raw(stream_id, packet_bytes)
-                #
-                # t_packet.decrypt(self._xtea)
-                #
-                # if t_packet.is_compressed:
-                #     print(t_packet)
-                #     t_packet.decompress()
-                #     print("-" * 60)
-                #     return
-                #
-                # print(t_packet)
-                # print("-" * 60)
+                buf = self.tcp_streams[stream_id]
+                buf.put_nowait(t_packet)
 
             except Exception as e:
                 print(f"{e}")

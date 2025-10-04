@@ -1,13 +1,17 @@
+from typing import Optional
+
 import numpy as np
 import mss
 import threading
 import queue
 
 import pyautogui
+from numpy import ndarray
+
 
 class Video:
     def __init__(self):
-        self.frame_queue: queue.Queue[np.ndarray] = queue.Queue(maxsize=20)
+        self.stream: VideoStream = VideoStream()
         self._running = False
         self._thread = None
 
@@ -40,17 +44,26 @@ class Video:
                 frame = np.frombuffer(sct_img.rgb, dtype=np.uint8)
                 frame = frame.reshape((sct_img.height, sct_img.width, 3))
 
-                try:
-                    self.frame_queue.put_nowait(frame)
-                except queue.Full:
-                    self.frame_queue.get_nowait()
-                    self.frame_queue.put_nowait(frame)
-
-    def get_frame(self):
-        try:
-            return self.frame_queue.get_nowait()
-        except queue.Empty:
-            return None
+                self.stream.put_frame(frame)
 
     def is_running(self) -> bool:
         return self._running
+
+class VideoStream:
+    def __init__(self):
+        self._stream: queue.Queue[np.ndarray] = queue.Queue(maxsize=20)
+
+    def put_frame(self, frame: ndarray) -> None:
+        try:
+            self._stream.put_nowait(frame)
+        except queue.Full:
+            self._stream.get_nowait()
+            self._stream.put_nowait(frame)
+
+    def get_frame(self) -> Optional[np.ndarray]:
+        frame = None
+
+        while not self._stream.empty():
+            frame = self._stream.get_nowait()
+
+        return frame
