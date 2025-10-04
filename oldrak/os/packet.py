@@ -1,6 +1,9 @@
+import sys
 import zlib
 
 from oldrak.os.decryption import Xtea
+from oldrak.shared import ClientPacketType, ServerPacketType
+
 
 class TibiaTcpPacket:
     def __init__(
@@ -22,6 +25,9 @@ class TibiaTcpPacket:
         self.sequence = sequence
         self.is_compressed = is_compressed
         self.payload = payload
+
+        self.is_decrypted = False
+        self.type = None
 
     @staticmethod
     def from_raw(stream_id: tuple[str, int, str, int], buf: bytes) -> 'TibiaTcpPacket':
@@ -59,7 +65,8 @@ class TibiaTcpPacket:
         return (
             f"{self.src}:{self.src_port} -> {self.dest}:{self.dest_port}\n"
             f"Total size: {self.size} (bytes) | Seq: {self.sequence} | Comp: {self.is_compressed}\n"
-            f"Payload ({len(self.payload)} bytes): {self.payload.hex(" ")}"
+            f"Payload ({len(self.payload)} bytes): {self.payload.hex(" ")}\n"
+            f"Type: {self.type}"
         )
 
     def decrypt(self, xtea: Xtea) -> None:
@@ -69,6 +76,7 @@ class TibiaTcpPacket:
         padding = int.from_bytes(decrypted_payload[:1], "little")
 
         self.payload = decrypted_payload[1 : len(decrypted_payload) - padding]
+        self.is_decrypted = True
 
     def decompress(self, decompressor: 'zlib.decompressobj') -> bytes|None:
         if not self.is_compressed:
@@ -85,6 +93,23 @@ class TibiaTcpPacket:
 
         except zlib.error as e:
             print(f"Streaming decompression error: {e}")
+
+    def parse(self,) -> None:
+        if not self.is_decrypted:
+            raise Exception("Packet is not decrypted")
+
+        try:
+            command_byte = self.payload[:1]
+            if self.is_client_packet():
+                self.type = ClientPacketType(int.from_bytes(command_byte, sys.byteorder))
+                self.payload = self.payload[1:]
+
+                return
+
+            self.type = ServerPacketType(int.from_bytes(command_byte, sys.byteorder))
+            self.payload = self.payload[1:]
+        except TypeError:
+            print(f"Unknown packet type: {self.payload.hex(' ')}")
 
     def is_client_packet(self) -> bool:
         return self.src_port != 7171

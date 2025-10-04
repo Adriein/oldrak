@@ -1,4 +1,6 @@
 from enum import Enum
+from typing import Optional
+
 
 class EngineState(Enum):
     Running = 1

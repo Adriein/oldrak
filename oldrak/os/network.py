@@ -52,6 +52,8 @@ class Network:
 
                 t_packet.decrypt(self._xtea)
 
+                t_packet.parse()
+
                 print(t_packet)
 
                 buf = self.tcp_streams[stream_id]
