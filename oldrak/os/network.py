@@ -9,13 +9,13 @@ from oldrak.os.decryption import Xtea
 
 
 class Network:
-    def __init__(self):
+    def __init__(self) -> None:
         self._xtea = None
         self.tcp_streams: dict[tuple[str, int, str, int], queue.Queue[TibiaTcpPacket]] = {}
         self.decompressor = {}
         self.sniffer = None
 
-    def sniff(self, decrypt_keys: list[int]):
+    def sniff(self, decrypt_keys: list[int]) -> None:
         self._xtea = Xtea(decrypt_keys)
         self.sniffer = AsyncSniffer(filter="tcp port 7171", prn= self._handle_tcp, store=0)
         self.sniffer.start()
@@ -62,3 +62,8 @@ class Network:
             except Exception as e:
                 print(f"{e}")
 
+
+class TcpStream:
+    def __init__(self, stream_id: tuple[str, int, str, int]) -> None:
+        self.stream_id = stream_id
+        self.buffer: queue.Queue[TibiaTcpPacket] = queue.Queue()
