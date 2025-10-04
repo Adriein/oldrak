@@ -5,7 +5,7 @@ import mss
 import threading
 import queue
 
-import pyautogui
+#import pyautogui
 from numpy import ndarray
 
 
@@ -15,12 +15,12 @@ class Video:
         self._running = False
         self._thread = None
 
-        screen_width, screen_height = pyautogui.size()
+        #screen_width, screen_height = pyautogui.size()
         self.monitor = {
             "top": 0,
             "left": 0,
-            "width": screen_width,
-            "height": screen_height
+            "width": 1,
+            "height": 1
         }
 
     def start(self):

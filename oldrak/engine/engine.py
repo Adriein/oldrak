@@ -30,7 +30,7 @@ class Engine:
                 continue
 
             self._game.spy_network()
-            video_stream = self._game.capture_video()
+            # video_stream = self._game.capture_video()
 
 
 

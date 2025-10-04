@@ -26,6 +26,14 @@ class Network:
                 stream_id = (pkt[IP].src, pkt[TCP].sport, pkt[IP].dst, pkt[TCP].dport)
                 payload = bytes(pkt[Raw].load)
 
+                has_to_ignore_tcp_packet = any(
+                    str_id[0] != pkt[IP].src and str_id[1] == pkt[TCP].sport
+                    for str_id in self.tcp_streams.keys()
+                )
+
+                if has_to_ignore_tcp_packet:
+                    return
+
                 if stream_id not in self.tcp_streams:
                     self.tcp_streams.setdefault(stream_id, queue.Queue())
 
@@ -43,6 +51,8 @@ class Network:
                     return
 
                 t_packet.decrypt(self._xtea)
+
+                print(t_packet)
 
                 buf = self.tcp_streams[stream_id]
                 buf.put_nowait(t_packet)
