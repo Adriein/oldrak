@@ -29,6 +29,8 @@ class Engine:
                 continue
 
             self._game.spy_network()
+            self._game.capture_video()
+
 
 
         print("Oldrak engine stopped.")

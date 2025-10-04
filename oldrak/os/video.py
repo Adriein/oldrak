@@ -51,3 +51,6 @@ class Video:
             return self.frame_queue.get_nowait()
         except queue.Empty:
             return None
+
+    def is_running(self) -> bool:
+        return self._running

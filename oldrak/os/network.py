@@ -1,4 +1,5 @@
 import zlib
+import queue
 
 from scapy.all import Packet, Raw, AsyncSniffer
 from scapy.layers.inet import IP, TCP
@@ -9,7 +10,7 @@ from oldrak.os.packet import TibiaTcpPacket
 class Network:
     def __init__(self):
         self._xtea = None
-        self.tcp_buffer: dict[tuple[str, int, str, int], bytearray] = {}
+        self.tcp_streams: dict[tuple[str, int, str, int], queue.Queue[TibiaTcpPacket]] = {}
         self.decompressor = {}
         self.sniffer = None
 
@@ -24,11 +25,11 @@ class Network:
                 stream_id = (pkt[IP].src, pkt[TCP].sport, pkt[IP].dst, pkt[TCP].dport)
                 payload = bytes(pkt[Raw].load)
 
-                if stream_id not in self.tcp_buffer:
-                    self.tcp_buffer.setdefault(stream_id, bytearray())
+                if stream_id not in self.tcp_streams:
+                    self.tcp_streams.setdefault(stream_id, queue.Queue())
 
-                buf = self.tcp_buffer[stream_id]
-                buf.extend(payload)
+                buf = self.tcp_streams[stream_id]
+                buf.put_nowait(TibiaTcpPacket.from_raw(stream_id, payload))
 
                 if stream_id not in self.decompressor:
                     self.decompressor.setdefault(stream_id, zlib.decompressobj(-zlib.MAX_WBITS))

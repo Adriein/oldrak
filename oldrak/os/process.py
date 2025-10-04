@@ -25,6 +25,12 @@ class Process:
 
         self._network.sniff()
 
+    def capture_video(self) -> None:
+        if self._video.is_running():
+            return
+
+        self._video.start()
+
     def abort_spy_network(self) -> None:
         self._network.sniffer.stop()
         self._network.sniffer = None
