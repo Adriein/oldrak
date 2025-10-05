@@ -19,20 +19,24 @@ class Engine:
 
         self._game.hook()
 
+        while self._game.pid is None:
+            print("Tibia is not running...")
+
+            self._game.hook()
+
+            time.sleep(0.5)
+
+        tcp_stream = self._game.spy_network()
+
+        session = GameSession(tcp_stream)
+        # video_stream = self._game.capture_video()
+
         while self._state is EngineState.Running:
-            if self._game.pid is None:
-                print("Tibia is not running...")
+            pass
 
-                self._game.hook()
+        session.flush(record=True)
 
-                time.sleep(0.5)
-
-                continue
-
-            self._game.spy_network()
-            # video_stream = self._game.capture_video()
-
-
+        self._game.write_decrypt_keys()
 
         print("Oldrak engine stopped.")
 

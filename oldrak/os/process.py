@@ -1,5 +1,5 @@
 from oldrak.os.memory import Memory
-from oldrak.os.network import Network
+from oldrak.os.network import Network, TcpStreamSet
 from oldrak.os.debugger import Debugger
 from oldrak.os.video import Video, VideoStream
 
@@ -18,11 +18,16 @@ class Process:
         self.pid = self._memory.get_pid_by_name(self.name)
 
 
-    def spy_network(self) -> None:
+    def spy_network(self) -> TcpStreamSet:
         if self._network.sniffer is not None:
-            return
+            return self._network.tcp_streams
 
         self._network.sniff()
+
+        return self._network.tcp_streams
+
+    def write_decrypt_keys(self) -> None:
+        self._debugger.get_xtea_decode_key(self.pid, record=True)
 
     def capture_video(self) -> VideoStream:
         if self._video.is_running():

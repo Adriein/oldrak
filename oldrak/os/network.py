@@ -6,11 +6,11 @@ from scapy.all import Packet, Raw, AsyncSniffer
 from scapy.layers.inet import IP, TCP
 
 from oldrak.os.packet import TibiaTcpPacket
+from oldrak.shared import TIBIA_SERVER_PORT
 
 
 class Network:
     def __init__(self) -> None:
-        self._xtea = None
         self.tcp_streams: TcpStreamSet = TcpStreamSet()
         self.decompressor = {}
         self.sniffer = None
@@ -33,13 +33,7 @@ class Network:
                 if stream_id not in self.decompressor:
                     self.decompressor.setdefault(stream_id, zlib.decompressobj(-zlib.MAX_WBITS))
 
-                t_packet = TibiaTcpPacket.from_raw(stream_id, payload)
-
-                if t_packet.size < len(t_packet.payload):
-                    print(f"Packet size is smaller than payload size, this means 2 commands in the same packet")
-                    return
-
-                buf.put_nowait(t_packet)
+                buf.put_nowait(TibiaTcpPacket.from_raw(stream_id, payload))
 
             except Exception as e:
                 print(f"{e}")
@@ -67,3 +61,13 @@ class TcpStreamSet:
 
     def __setitem__(self, stream_id: tuple[str, int, str, int], value: queue.Queue[TibiaTcpPacket]) -> None:
         self.set[stream_id] = value
+
+    def get_server_stream(self) -> queue.Queue[TibiaTcpPacket]:
+        try:
+            server_stream_id = next(stream_id for stream_id in self.set.keys() if stream_id[1] == TIBIA_SERVER_PORT)
+
+            return self[server_stream_id]
+
+        except StopIteration:
+            raise Exception("No server stream found")
+

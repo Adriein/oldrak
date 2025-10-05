@@ -1,6 +1,6 @@
 from enum import Enum
-from typing import Optional
 
+TIBIA_SERVER_PORT = 7171
 
 class EngineState(Enum):
     Running = 1

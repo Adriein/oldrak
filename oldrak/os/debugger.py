@@ -18,7 +18,7 @@ class Debugger:
 
         return hex(addresses[0])
 
-    def get_xtea_decode_key(self, pid: int) -> list[int]:
+    def get_xtea_decode_key(self, pid: int, record=False) -> list[int]:
         """Attach gdb to the process self.process_id and set a breakpoint at the address self.breakpoint_address.
         Prints 128 bits out of the $rdi address.
         Returns the gdb output as a string.
@@ -39,6 +39,9 @@ class Debugger:
 
         # Keys are in 0x00 format, convert to bytes.
         keys = [int(key, 16) for key in keys]
+
+        if not record:
+            return keys
 
         # Write key to file for debugging purposes.
         with open("key.txt", "w") as f:
