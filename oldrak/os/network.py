@@ -15,7 +15,7 @@ class Network:
         self.decompressor = {}
         self.sniffer = None
 
-    def sniff(self,) -> None:
+    def sniff(self) -> None:
         self.sniffer = AsyncSniffer(filter="tcp port 7171", prn= self._handle_tcp, store=0)
         self.sniffer.start()
 

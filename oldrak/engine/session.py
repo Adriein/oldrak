@@ -33,3 +33,28 @@ class GameSession:
                     t_packet.payload.hex()
                 ])
 
+    def replay(self, session_id: str) -> None:
+        session_file = Path(f"{session_id}_tcp_session.csv")
+        keys_file = Path("key.txt")
+
+        with open(keys_file, 'r', newline='', encoding='utf-8') as f:
+            keys = f.read().split(',')
+
+
+
+        with open(session_file, 'r', newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+
+            for row in reader:
+                print(f"Source IP: {row['src']}")
+                print(f"Sequence: {row['sequence']}")
+                print(f"Payload Hex: {row['payload_hex']}")
+                print("-" * 20)
+
+                # Note: Values are returned as strings, so you may need to convert them
+                # if you want to use them as integers (e.g., int(row['size'])).
+
+                # Example of conversion:
+                # size = int(row['size'])
+                # is_compressed = row['is_compressed'] == 'True'
+

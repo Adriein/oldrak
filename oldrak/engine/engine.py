@@ -34,8 +34,10 @@ class Engine:
         while self._state is EngineState.Running:
             pass
 
+        print("Flushing session.")
         session.flush(record=True)
 
+        print("Save decrypt keys.")
         self._game.write_decrypt_keys()
 
         print("Oldrak engine stopped.")
