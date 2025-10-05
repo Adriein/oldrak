@@ -22,9 +22,7 @@ class Process:
         if self._network.sniffer is not None:
             return
 
-        decrypt_keys = self._debugger.get_xtea_decode_key(self.pid)
-
-        self._network.sniff(decrypt_keys)
+        self._network.sniff()
 
     def capture_video(self) -> VideoStream:
         if self._video.is_running():

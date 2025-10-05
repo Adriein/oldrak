@@ -34,7 +34,7 @@ class Debugger:
                    "-x", f"{gdb_file_directory}"]
 
         gdb_output = subprocess.check_output(command).decode("utf-8")
-        print(f"{gdb_output=}")
+
         keys = [key for key in gdb_output.split(":\t")[1].split("\n")[0].split("\t") if key]
 
         # Keys are in 0x00 format, convert to bytes.
