@@ -14,11 +14,11 @@ class GameSession:
 
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
-        filename = Path(f"{timestamp}_tcp_session.csv")
+        session_file = Path(f"{timestamp}_tcp_session.csv")
 
         buf = self._tcp_stream.get_server_stream()
 
-        with filename.open('w', newline='', encoding='utf-8') as f:
+        with session_file.open('w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
 
             while not buf.empty():
@@ -37,12 +37,11 @@ class GameSession:
         session_file = Path(f"{session_id}_tcp_session.csv")
         keys_file = Path("key.txt")
 
-        with open(keys_file, 'r', newline='', encoding='utf-8') as f:
+        with keys_file.open(mode='r', newline='', encoding='utf-8') as f:
             keys = f.read().split(',')
 
 
-
-        with open(session_file, 'r', newline='', encoding='utf-8') as f:
+        with session_file.open(mode='r', newline='', encoding='utf-8') as f:
             reader = csv.DictReader(f)
 
             for row in reader:
