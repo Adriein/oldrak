@@ -1,11 +1,15 @@
 import csv
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from oldrak.os import TcpStreamSet
+from oldrak.os.packet import TibiaTcpPacket
+from oldrak.os.decryption import Xtea
+
 
 class GameSession:
-    def __init__(self, tcp_stream: TcpStreamSet):
+    def __init__(self, tcp_stream: Optional[TcpStreamSet]):
         self._tcp_stream = tcp_stream
 
     def flush(self, record = False) -> None:
@@ -33,27 +37,33 @@ class GameSession:
                     t_packet.payload.hex()
                 ])
 
+class SessionDebugger:
+    def __init__(self):
+        pass
     def replay(self, session_id: str) -> None:
         session_file = Path(f"{session_id}_tcp_session.csv")
         keys_file = Path("key.txt")
 
         with keys_file.open(mode='r', newline='', encoding='utf-8') as f:
-            keys = f.read().split(',')
-
+            keys = [int(k) for k in f.read().split(',') if k.strip()]
 
         with session_file.open(mode='r', newline='', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
+            reader = csv.reader(f)
 
             for row in reader:
-                print(f"Source IP: {row['src']}")
-                print(f"Sequence: {row['sequence']}")
-                print(f"Payload Hex: {row['payload_hex']}")
+                (src, src_port, sequence, size, is_compressed, payload) = row
+                t_packet = TibiaTcpPacket(
+                    src,
+                    "unknown",
+                    int(src_port),
+                    0,
+                    int(size),
+                    int(sequence),
+                    is_compressed == 'True',
+                    bytes.fromhex(payload)
+                )
+
+                t_packet.decrypt(Xtea(keys))
+
+                print(t_packet)
                 print("-" * 20)
-
-                # Note: Values are returned as strings, so you may need to convert them
-                # if you want to use them as integers (e.g., int(row['size'])).
-
-                # Example of conversion:
-                # size = int(row['size'])
-                # is_compressed = row['is_compressed'] == 'True'
-
