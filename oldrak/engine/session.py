@@ -1,4 +1,5 @@
 import csv
+import zlib
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -39,7 +40,8 @@ class GameSession:
 
 class SessionDebugger:
     def __init__(self):
-        pass
+        self.decompressor = zlib.decompressobj(wbits=-zlib.MAX_WBITS)
+
     def replay(self, session_id: str) -> None:
         session_file = Path(f"{session_id}_tcp_session.csv")
         keys_file = Path("key.txt")
@@ -65,5 +67,11 @@ class SessionDebugger:
 
                 t_packet.decrypt(Xtea(keys))
 
-                print(t_packet)
-                print("-" * 20)
+                if t_packet.is_compressed and t_packet.sequence <= 164:
+                    t_packet.decompress(self.decompressor)
+
+                if t_packet.sequence <= 164:
+                    print(t_packet)
+                    print("-" * 20)
+
+

@@ -75,12 +75,18 @@ class TibiaTcpPacket:
         #Remove junk bytes, the first byte indicates the byte padding (0-7)
         padding = int.from_bytes(decrypted_payload[:1], "little")
 
-        self.payload = decrypted_payload[1 : len(decrypted_payload) - padding]
+        if 0x00 <= padding <= 0x07:
+            self.payload = decrypted_payload[1 : len(decrypted_payload) - padding]
+
+            return
+
+        self.payload = decrypted_payload
+
         self.is_decrypted = True
 
     def decompress(self, decompressor: 'zlib.decompressobj') -> bytes|None:
         if not self.is_compressed:
-            return self.payload
+            return
 
         try:
             out = decompressor.decompress(self.payload)
@@ -90,6 +96,8 @@ class TibiaTcpPacket:
             print(f"Bytes consumed from payload: {len(self.payload) - len(decompressor.unconsumed_tail)}")
             print(f"Unconsumed tail length: {len(decompressor.unconsumed_tail)}")
             print(f"Unused data length: {len(decompressor.unused_data)}")
+
+            self.payload = out
 
         except zlib.error as e:
             print(f"Streaming decompression error: {e}")
