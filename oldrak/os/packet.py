@@ -12,7 +12,7 @@ class TibiaTcpPacket:
             dest: str,
             src_port: int,
             dest_port: int,
-            size: int,
+            raw_size: int,
             sequence: int,
             is_compressed: bool,
             payload: bytes
@@ -21,10 +21,13 @@ class TibiaTcpPacket:
         self.dest = dest
         self.src_port = src_port
         self.dest_port = dest_port
-        self.size = size
+        self.raw_size = raw_size
         self.sequence = sequence
         self.is_compressed = is_compressed
         self.payload = payload
+
+        self.padding_payload_bytes = 0
+        self.removed_payload_bytes = 0
 
         self.is_decrypted = False
         self.type = None
@@ -64,7 +67,8 @@ class TibiaTcpPacket:
     def __repr__(self) -> str:
         return (
             f"{self.src}:{self.src_port} -> {self.dest}:{self.dest_port}\n"
-            f"Total size: {self.size} (bytes) | Seq: {self.sequence} | Comp: {self.is_compressed}\n"
+            f"Raw size: {self.raw_size} (bytes) | Seq: {self.sequence} | Comp: {self.is_compressed}\n"
+            f"Payload bytes removed: {self.removed_payload_bytes}\n"
             f"Payload ({len(self.payload)} bytes): {self.payload.hex(" ")}\n"
             f"Type: {self.type}"
         )
@@ -75,8 +79,13 @@ class TibiaTcpPacket:
         #Remove junk bytes, the first byte indicates the byte padding (0-7)
         padding = int.from_bytes(decrypted_payload[:1], "little")
 
-        if 0x00 <= padding <= 0x07:
+        if 0 <= padding <= 7:
             self.payload = decrypted_payload[1 : len(decrypted_payload) - padding]
+
+            self.is_decrypted = True
+            self.padding_payload_bytes = padding
+
+            self.removed_payload_bytes = self.removed_payload_bytes + 1 + padding
 
             return
 
@@ -92,10 +101,10 @@ class TibiaTcpPacket:
             out = decompressor.decompress(self.payload)
 
             # Optional monitoring info
-            print(f"Decompressed {len(out)} bytes")
-            print(f"Bytes consumed from payload: {len(self.payload) - len(decompressor.unconsumed_tail)}")
-            print(f"Unconsumed tail length: {len(decompressor.unconsumed_tail)}")
-            print(f"Unused data length: {len(decompressor.unused_data)}")
+            # print(f"Decompressed {len(out)} bytes")
+            # print(f"Bytes consumed from payload: {len(self.payload) - len(decompressor.unconsumed_tail)}")
+            # print(f"Unconsumed tail length: {len(decompressor.unconsumed_tail)}")
+            # print(f"Unused data length: {len(decompressor.unused_data)}")
 
             self.payload = out
 
@@ -108,6 +117,7 @@ class TibiaTcpPacket:
 
         try:
             command_byte = self.payload[:1]
+
             if self.is_client_packet():
                 self.type = ClientPacketType(int.from_bytes(command_byte, sys.byteorder))
                 self.payload = self.payload[1:]
@@ -116,8 +126,8 @@ class TibiaTcpPacket:
 
             self.type = ServerPacketType(int.from_bytes(command_byte, sys.byteorder))
             self.payload = self.payload[1:]
-        except TypeError:
-            print(f"Unknown packet type: {self.payload.hex(' ')}")
+        except (TypeError, ValueError):
+            pass
 
     def is_client_packet(self) -> bool:
         return self.src_port != 7171

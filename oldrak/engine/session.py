@@ -71,6 +71,7 @@ class SessionDebugger:
                     t_packet.decompress(self.decompressor)
 
                 if t_packet.sequence <= 164:
+                    #t_packet.parse()
                     print(t_packet)
                     print("-" * 20)
 
