@@ -33,7 +33,7 @@ class GameSession:
                     t_packet.src,
                     t_packet.src_port,
                     t_packet.sequence,
-                    t_packet.size,
+                    t_packet.raw_size,
                     t_packet.is_compressed,
                     t_packet.payload.hex()
                 ])
@@ -67,11 +67,11 @@ class SessionDebugger:
 
                 t_packet.decrypt(Xtea(keys))
 
-                if t_packet.is_compressed and t_packet.sequence <= 164:
+                if t_packet.is_compressed and t_packet.sequence <= 308:
                     t_packet.decompress(self.decompressor)
 
-                if t_packet.sequence <= 164:
-                    #t_packet.parse()
+                if t_packet.sequence <= 308 and t_packet.is_compressed is False:
+                    t_packet.parse()
                     print(t_packet)
                     print("-" * 20)
 
