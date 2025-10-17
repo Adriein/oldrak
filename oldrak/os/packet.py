@@ -41,14 +41,16 @@ class TibiaTcpPacket:
             raise Exception("Too small to be a valid packet")
 
         # The first 2 bytes are the size of the payload in multiples of 8 bytes in little endian.
-        size = int.from_bytes(raw_bytes[:2], "little") * 8
+        size = int.from_bytes(raw_bytes[:2], sys.byteorder, signed=False) * 8
 
         # Next 2 bytes = sequence number
-        sequence = int.from_bytes(raw_bytes[2:4], "little")
+        sequence = int.from_bytes(raw_bytes[2:4], sys.byteorder, signed=False)
 
         # Next 2 bytes = compression flag
-        compression_flag = int.from_bytes(raw_bytes[4:6], "little")
-        is_compressed = bool(compression_flag)
+        compression_flag = int.from_bytes(raw_bytes[4:6], sys.byteorder, signed=False)
+
+        is_compressed = compression_flag == 0xC000
+        is_valid = is_compressed or compression_flag == 0x0000
 
         # The rest = payload
         payload = raw_bytes[6:]

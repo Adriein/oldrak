@@ -1,4 +1,3 @@
-import zlib
 import queue
 from typing import Optional
 
@@ -12,7 +11,6 @@ from oldrak.shared import TIBIA_SERVER_PORT
 class Network:
     def __init__(self) -> None:
         self.tcp_streams: TcpStreamSet = TcpStreamSet()
-        self.decompressor = {}
         self.sniffer = None
 
     def sniff(self) -> None:
@@ -30,11 +28,7 @@ class Network:
                 if buf is None:
                     return
 
-                if stream_id not in self.decompressor:
-                    self.decompressor.setdefault(stream_id, zlib.decompressobj(-zlib.MAX_WBITS))
-
                 buf.put_nowait(TibiaTcpPacket.from_raw(stream_id, payload))
-
             except Exception as e:
                 print(f"{e}")
 
