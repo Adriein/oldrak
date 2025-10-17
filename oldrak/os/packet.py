@@ -133,3 +133,6 @@ class TibiaTcpPacket:
 
     def is_client_packet(self) -> bool:
         return self.src_port != 7171
+
+    def is_incomplete(self) -> bool:
+        return self.size_header > self.real_size

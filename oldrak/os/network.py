@@ -11,6 +11,7 @@ from oldrak.shared import TIBIA_SERVER_PORT
 class Network:
     def __init__(self) -> None:
         self.tcp_streams: TcpStreamSet = TcpStreamSet()
+        self.incomplete_buffer: TcpStreamSet = TcpStreamSet()
         self.sniffer = None
 
     def sniff(self) -> None:
@@ -28,7 +29,16 @@ class Network:
                 if buf is None:
                     return
 
-                buf.put_nowait(TibiaTcpPacket.from_raw(stream_id, payload))
+                t_packet = TibiaTcpPacket.from_raw(stream_id, payload)
+
+                if t_packet.is_incomplete():
+                    buff = self.incomplete_buffer[stream_id]
+
+                    buff.put_nowait(t_packet)
+
+                    return
+
+                buf.put_nowait(t_packet)
             except Exception as e:
                 print(f"{e}")
 
