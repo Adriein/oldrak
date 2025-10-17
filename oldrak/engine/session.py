@@ -1,4 +1,5 @@
 import csv
+import os
 import zlib
 from datetime import datetime
 from pathlib import Path
@@ -37,6 +38,9 @@ class GameSession:
                     t_packet.is_compressed,
                     t_packet.payload.hex()
                 ])
+
+            os.chown(session_file, os.getuid(), os.getgid())
+            os.chmod(session_file, 0o644)
 
 class SessionDebugger:
     def __init__(self):
