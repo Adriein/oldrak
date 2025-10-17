@@ -21,7 +21,8 @@ class TibiaTcpPacket:
         self.dest = dest
         self.src_port = src_port
         self.dest_port = dest_port
-        self.raw_size = raw_size
+        self.size_header = raw_size
+        self.real_size = len(payload)
         self.sequence = sequence
         self.is_compressed = is_compressed
         self.payload = payload
@@ -50,7 +51,6 @@ class TibiaTcpPacket:
         compression_flag = int.from_bytes(raw_bytes[4:6], sys.byteorder, signed=False)
 
         is_compressed = compression_flag == 0xC000
-        is_valid = is_compressed or compression_flag == 0x0000
 
         # The rest = payload
         payload = raw_bytes[6:]
@@ -69,8 +69,8 @@ class TibiaTcpPacket:
     def __repr__(self) -> str:
         return (
             f"{self.src}:{self.src_port} -> {self.dest}:{self.dest_port}\n"
-            f"Raw size: {self.raw_size} (bytes) | Seq: {self.sequence} | Comp: {self.is_compressed}\n"
-            f"Payload bytes removed: {self.removed_payload_bytes}\n"
+            f"Size Header: {self.size_header} (bytes) | Seq: {self.sequence} | Comp: {self.is_compressed}\n"
+            f"Real Size: {self.real_size}\n"
             f"Payload ({len(self.payload)} bytes): {self.payload.hex(" ")}\n"
             f"Type: {self.type}"
         )

@@ -34,7 +34,7 @@ class GameSession:
                     t_packet.src,
                     t_packet.src_port,
                     t_packet.sequence,
-                    t_packet.raw_size,
+                    t_packet.size_header,
                     t_packet.is_compressed,
                     t_packet.payload.hex()
                 ])
