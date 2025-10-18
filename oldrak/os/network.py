@@ -38,6 +38,22 @@ class Network:
 
                     return
 
+                if t_packet.is_composed():
+                    composed_payload = t_packet.payload
+
+                    read_offset = t_packet.size_header - 6
+
+                    raw_next_packet = composed_payload[read_offset:]
+
+                    t_packet.payload = composed_payload[:read_offset]
+
+                    next_t_packet = TibiaTcpPacket.from_raw(stream_id, raw_next_packet)
+
+                    buf.put_nowait(t_packet)
+                    buf.put_nowait(next_t_packet)
+
+                    return
+
                 buf.put_nowait(t_packet)
             except Exception as e:
                 print(f"{e}")

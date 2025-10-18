@@ -136,3 +136,6 @@ class TibiaTcpPacket:
 
     def is_incomplete(self) -> bool:
         return self.size_header > self.real_size
+
+    def is_composed(self) -> bool:
+        return self.size_header < self.real_size
