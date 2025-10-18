@@ -1,7 +1,7 @@
 import sys
 import zlib
 
-from oldrak.os.decryption import Xtea
+from oldrak.os import Xtea
 from oldrak.shared import ClientPacketType, ServerPacketType
 
 
@@ -15,28 +15,26 @@ class TibiaTcpPacket:
             raw_size: int,
             sequence: int,
             is_compressed: bool,
-            payload: bytes
+            payload: bytes,
+            is_valid: bool,
     ) -> None:
         self.src = src
         self.dest = dest
         self.src_port = src_port
         self.dest_port = dest_port
-        self.size_header = raw_size
-        self.real_size = len(payload)
+        self.expected_size = raw_size
+        self.actual_size = len(payload)
         self.sequence = sequence
         self.is_compressed = is_compressed
+        self.is_valid = is_valid
         self.payload = payload
-
-        self.padding_payload_bytes = 0
-        self.removed_payload_bytes = 0
 
         self.is_decrypted = False
         self.type = None
 
     @staticmethod
-    def from_raw(stream_id: tuple[str, int, str, int], buf: bytes) -> 'TibiaTcpPacket':
+    def from_bytes(stream_id: tuple[str, int, str, int], raw_bytes: bytes) -> 'TibiaTcpPacket':
         src, src_port, dest, dest_port = stream_id
-        raw_bytes = buf
 
         if len(raw_bytes) < 6:
             raise Exception("Too small to be a valid packet")
@@ -51,6 +49,7 @@ class TibiaTcpPacket:
         compression_flag = int.from_bytes(raw_bytes[4:6], sys.byteorder, signed=False)
 
         is_compressed = compression_flag == 0xC000
+        is_valid = is_compressed or compression_flag == 0x0000
 
         # The rest = payload
         payload = raw_bytes[6:]
@@ -63,14 +62,15 @@ class TibiaTcpPacket:
             size,
             sequence,
             is_compressed,
-            payload
+            payload,
+            is_valid,
         )
 
     def __repr__(self) -> str:
         return (
             f"{self.src}:{self.src_port} -> {self.dest}:{self.dest_port}\n"
-            f"Size Header: {self.size_header} (bytes) | Seq: {self.sequence} | Comp: {self.is_compressed}\n"
-            f"Real Size: {self.real_size}\n"
+            f"Size Header: {self.expected_size} (bytes) | Seq: {self.sequence} | Comp: {self.is_compressed}\n"
+            f"Real Size: {self.actual_size}\n"
             f"Payload ({len(self.payload)} bytes): {self.payload.hex(" ")}\n"
             f"Type: {self.type}"
         )
@@ -85,10 +85,6 @@ class TibiaTcpPacket:
             self.payload = decrypted_payload[1 : len(decrypted_payload) - padding]
 
             self.is_decrypted = True
-            self.padding_payload_bytes = padding
-
-            self.removed_payload_bytes = self.removed_payload_bytes + 1 + padding
-
             return
 
         self.payload = decrypted_payload
@@ -135,7 +131,7 @@ class TibiaTcpPacket:
         return self.src_port != 7171
 
     def is_incomplete(self) -> bool:
-        return self.size_header > self.real_size
+        return self.expected_size > self.actual_size
 
     def is_composed(self) -> bool:
-        return self.size_header < self.real_size
+        return self.expected_size < self.actual_size

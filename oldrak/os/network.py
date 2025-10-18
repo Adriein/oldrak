@@ -1,10 +1,9 @@
 import queue
-from typing import Optional
+from typing import Optional, Tuple
 
 from scapy.all import Packet, Raw, AsyncSniffer
 from scapy.layers.inet import IP, TCP
 
-from oldrak.os.packet import TibiaTcpPacket
 from oldrak.shared import TIBIA_SERVER_PORT
 
 
@@ -29,41 +28,52 @@ class Network:
                 if buf is None:
                     return
 
-                t_packet = TibiaTcpPacket.from_raw(stream_id, payload)
+                buf.put_nowait(payload)
 
-                if t_packet.is_incomplete():
-                    buff = self.incomplete_buffer[stream_id]
+                return
 
-                    buff.put_nowait(t_packet)
-
-                    return
-
-                if t_packet.is_composed():
-                    composed_payload = t_packet.payload
-
-                    read_offset = t_packet.size_header - 6
-
-                    raw_next_packet = composed_payload[read_offset:]
-
-                    t_packet.payload = composed_payload[:read_offset]
-
-                    next_t_packet = TibiaTcpPacket.from_raw(stream_id, raw_next_packet)
-
-                    buf.put_nowait(t_packet)
-                    buf.put_nowait(next_t_packet)
-
-                    return
-
-                buf.put_nowait(t_packet)
+                # t_packet = TibiaTcpPacket.from_raw(stream_id, payload)
+                #
+                # if t_packet.is_incomplete() and not t_packet.is_client_packet():
+                #     print(f"Incomplete packet:\n")
+                #     print(t_packet)
+                #     buff = self.incomplete_buffer[stream_id]
+                #
+                #     buff.put_nowait(t_packet)
+                #
+                #     return
+                #
+                # if t_packet.is_composed() and not t_packet.is_client_packet():
+                #     print(f"Composed packet:\n")
+                #     print(t_packet)
+                #     composed_payload = t_packet.payload
+                #
+                #     read_offset = t_packet.size_header - 6
+                #
+                #     raw_next_packet = composed_payload[read_offset:]
+                #
+                #     t_packet.payload = composed_payload[:read_offset]
+                #
+                #     next_t_packet = TibiaTcpPacket.from_raw(stream_id, raw_next_packet)
+                #
+                #     buf.put_nowait(t_packet)
+                #     buf.put_nowait(next_t_packet)
+                #
+                #     return
+                #
+                # print(f"Normal packet:\n")
+                # print(t_packet)
+                # print("-----------------------------------------------------------------------------------------------")
+                # buf.put_nowait(t_packet)
             except Exception as e:
                 print(f"{e}")
 
 
 class TcpStreamSet:
     def __init__(self,) -> None:
-        self.set: dict[tuple[str, int, str, int], queue.Queue[TibiaTcpPacket]] = {}
+        self.set: dict[tuple[str, int, str, int], queue.Queue[bytes]] = {}
 
-    def __getitem__(self, stream_id: tuple[str, int, str, int]) -> Optional[queue.Queue[TibiaTcpPacket]]:
+    def __getitem__(self, stream_id: tuple[str, int, str, int]) -> Optional[queue.Queue[bytes]]:
         src, src_port, dest, dest_port = stream_id
 
         has_to_ignore_tcp_packet = any(
@@ -79,14 +89,14 @@ class TcpStreamSet:
 
         return self.set[stream_id]
 
-    def __setitem__(self, stream_id: tuple[str, int, str, int], value: queue.Queue[TibiaTcpPacket]) -> None:
+    def __setitem__(self, stream_id: tuple[str, int, str, int], value: queue.Queue[bytes]) -> None:
         self.set[stream_id] = value
 
-    def get_server_stream(self) -> queue.Queue[TibiaTcpPacket]:
+    def get_server_stream(self) -> Tuple[tuple[str, int, str, int], queue.Queue[bytes]]:
         try:
             server_stream_id = next(stream_id for stream_id in self.set.keys() if stream_id[1] == TIBIA_SERVER_PORT)
 
-            return self[server_stream_id]
+            return server_stream_id, self[server_stream_id]
 
         except StopIteration:
             raise Exception("No server stream found")

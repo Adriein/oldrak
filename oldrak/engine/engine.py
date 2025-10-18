@@ -15,7 +15,7 @@ class Engine:
     def start(self):
         self._state = EngineState.Running
 
-        self._set_stop_handler()
+        #self._set_stop_handler()
 
         self._game.hook()
 
@@ -32,7 +32,7 @@ class Engine:
         # video_stream = self._game.capture_video()
 
         while self._state is EngineState.Running:
-            pass
+            time.sleep(0.01)
 
         print("Flushing session.")
         session.flush(record=True)

@@ -5,13 +5,14 @@ from pathlib import Path
 from typing import Optional
 
 from oldrak.os import TcpStreamSet
-from oldrak.os.packet import TibiaTcpPacket
+from oldrak.engine.packet import TibiaTcpPacket
 from oldrak.os.decryption import Xtea
 
 
 class GameSession:
     def __init__(self, tcp_stream: Optional[TcpStreamSet]):
         self._tcp_stream = tcp_stream
+        self._incomplete_buffer = TcpStreamSet()
 
     def flush(self, record = False) -> None:
         if not record:
@@ -21,19 +22,44 @@ class GameSession:
 
         session_file = Path(f"{timestamp}_tcp_session.csv")
 
-        buf = self._tcp_stream.get_server_stream()
+        sid, buf = self._tcp_stream.get_server_stream()
 
         with session_file.open('w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
 
             while not buf.empty():
-                t_packet = buf.get_nowait()
+                raw = buf.get_nowait()
+
+                t_packet = TibiaTcpPacket.from_bytes(stream_id=sid, raw_bytes=raw)
+
+                if not t_packet.is_valid:
+                    incomplete_buff = self._incomplete_buffer[sid]
+
+                    if incomplete_buff.empty():
+                        raise Exception("Invalid packet in the sequence")
+
+                    prev_bytes = incomplete_buff.get_nowait()
+
+                    prev_packet = TibiaTcpPacket.from_bytes(stream_id=sid, raw_bytes=prev_bytes)
+
+                    missing_bytes = raw[:prev_packet.expected_size - prev_packet.actual_size]
+
+                    prev_packet.payload += missing_bytes
+
+                    continue
+
+                if t_packet.is_incomplete():
+                    incomplete_buff = self._incomplete_buffer[sid]
+
+                    incomplete_buff.put_nowait(raw)
+
+                    continue
 
                 writer.writerow([
                     t_packet.src,
                     t_packet.src_port,
                     t_packet.sequence,
-                    t_packet.size_header,
+                    t_packet.expected_size,
                     t_packet.is_compressed,
                     t_packet.payload.hex()
                 ])
