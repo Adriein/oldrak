@@ -42,11 +42,15 @@ class GameSession:
 
                     prev_packet = TibiaTcpPacket.from_bytes(stream_id=sid, raw_bytes=prev_bytes)
 
-                    missing_bytes = raw[:prev_packet.expected_size - prev_packet.actual_size]
+                    missing_offset = prev_packet.expected_size - prev_packet.actual_size
+
+                    missing_bytes = raw[:missing_offset]
 
                     prev_packet.payload += missing_bytes
 
-                    continue
+                    next_bytes = raw[missing_offset:]
+
+                    t_packet = TibiaTcpPacket.from_bytes(stream_id=sid, raw_bytes=next_bytes)
 
                 if t_packet.is_incomplete():
                     incomplete_buff = self._incomplete_buffer[sid]
