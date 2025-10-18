@@ -1,5 +1,4 @@
 import csv
-import os
 import zlib
 from datetime import datetime
 from pathlib import Path
@@ -18,7 +17,7 @@ class GameSession:
         if not record:
             return
 
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.now().strftime("%Y%m%d")
 
         session_file = Path(f"{timestamp}_tcp_session.csv")
 
@@ -38,9 +37,6 @@ class GameSession:
                     t_packet.is_compressed,
                     t_packet.payload.hex()
                 ])
-
-            os.chown(session_file, os.getuid(), os.getgid())
-            os.chmod(session_file, 0o644)
 
 class SessionDebugger:
     def __init__(self):

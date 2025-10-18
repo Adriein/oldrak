@@ -4,7 +4,7 @@ import keyboard
 
 from oldrak.shared import EngineState, EngineCommand
 from oldrak.os import Process, Memory, Network, Debugger, Video
-from oldrak.engine.session import GameSession
+from oldrak.engine.session import GameSession, SessionDebugger
 
 
 class Engine:
@@ -39,6 +39,10 @@ class Engine:
 
         print("Save decrypt keys.")
         self._game.write_decrypt_keys()
+
+        #debugger = SessionDebugger()
+
+        #debugger.replay("20251018")
 
         print("Oldrak engine stopped.")
 
