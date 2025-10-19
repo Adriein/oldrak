@@ -114,18 +114,18 @@ class TibiaTcpPacket:
 
         self.is_decrypted = True
 
-    def decompress(self, decompressor: 'zlib.decompressobj') -> bytes|None:
+    def dec(self, decompressor: 'zlib.decompressobj') -> bytes|None:
         if not self.is_compressed:
             return
 
         try:
             out = decompressor.decompress(self.payload)
 
-            # Optional monitoring info
-            # print(f"Decompressed {len(out)} bytes")
-            # print(f"Bytes consumed from payload: {len(self.payload) - len(decompressor.unconsumed_tail)}")
-            # print(f"Unconsumed tail length: {len(decompressor.unconsumed_tail)}")
-            # print(f"Unused data length: {len(decompressor.unused_data)}")
+            #Optional monitoring info
+            print(f"Decompressed {len(out)} bytes")
+            print(f"Bytes consumed from payload: {len(self.payload) - len(decompressor.unconsumed_tail)}")
+            print(f"Unconsumed tail length: {len(decompressor.unconsumed_tail)}")
+            print(f"Unused data length: {len(decompressor.unused_data)}")
 
             self.payload = out
 

@@ -136,7 +136,7 @@ class SessionDebugger:
                     print("-" * 100)
 
                 if t_packet.is_compressed:
-                    t_packet.decompress(self.decompressor)
+                    t_packet.dec(self.decompressor)
 
                 #
                 # if t_packet.is_compressed is False:
