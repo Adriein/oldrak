@@ -38,6 +38,7 @@ class GameSession:
                     incomplete_buff = self._incomplete_buffer[sid]
 
                     if incomplete_buff.empty():
+                        print(t_packet)
                         raise Exception("Invalid packet in the sequence")
 
                     prev_bytes = incomplete_buff.get_nowait()
@@ -58,8 +59,19 @@ class GameSession:
 
                     next_bytes = raw[missing_offset:]
 
-                    if len(next_bytes) != 0:
-                        t_packet = TibiaTcpPacket.from_bytes(stream_id=sid, raw_bytes=next_bytes)
+                    if len(next_bytes) == 0:
+                        writer.writerow([
+                            prev_packet.src,
+                            prev_packet.src_port,
+                            prev_packet.sequence,
+                            prev_packet.expected_size,
+                            prev_packet.is_compressed,
+                            prev_packet.payload.hex(" ")
+                        ])
+
+                        continue
+
+                    t_packet = TibiaTcpPacket.from_bytes(stream_id=sid, raw_bytes=next_bytes)
 
                 if t_packet.is_incomplete():
                     incomplete_buff = self._incomplete_buffer[sid]
@@ -67,6 +79,9 @@ class GameSession:
                     incomplete_buff.put_nowait(raw)
 
                     continue
+
+                if t_packet.is_composed():
+                    raise Exception("Packet is composed")
 
                 writer.writerow([
                     t_packet.src,
@@ -113,12 +128,18 @@ class SessionDebugger:
 
                 t_packet.decrypt(Xtea(keys))
 
+                if not t_packet.is_compressed:
+                    t_packet.parse()
+                    print(t_packet)
+                    print("-" * 100)
+
                 if t_packet.is_compressed:
                     t_packet.decompress(self.decompressor)
 
-                if t_packet.is_compressed is False:
-                    t_packet.parse()
-                    print(t_packet)
-                    print("-" * 20)
+                #
+                # if t_packet.is_compressed is False:
+                #     t_packet.parse()
+                #     print(t_packet)
+                #     print("-" * 20)
 
 
