@@ -27,7 +27,7 @@ class GameSession:
         with session_file.open('w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
 
-            writer.writerow(['src', 'src_port', 'sequence', 'expected_size', 'is_compressed', 'payload'])
+            writer.writerow(['src', 'src_port', 'sequence', 'actual_size', 'expected_size', 'is_compressed', 'payload'])
 
             while not buf.empty():
                 raw = buf.get_nowait()
@@ -64,6 +64,7 @@ class GameSession:
                             prev_packet.src,
                             prev_packet.src_port,
                             prev_packet.sequence,
+                            prev_packet.actual_size,
                             prev_packet.expected_size,
                             prev_packet.is_compressed,
                             prev_packet.payload.hex(" ")
@@ -87,6 +88,7 @@ class GameSession:
                     t_packet.src,
                     t_packet.src_port,
                     t_packet.sequence,
+                    t_packet.actual_size,
                     t_packet.expected_size,
                     t_packet.is_compressed,
                     t_packet.payload.hex(" ")
