@@ -27,6 +27,8 @@ class GameSession:
         with session_file.open('w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
 
+            writer.writerow(['src', 'src_port', 'sequence', 'expected_size', 'is_compressed', 'payload'])
+
             while not buf.empty():
                 raw = buf.get_nowait()
 
@@ -89,28 +91,34 @@ class SessionDebugger:
             keys = [int(k) for k in f.read().split(',') if k.strip()]
 
         with session_file.open(mode='r', newline='', encoding='utf-8') as f:
-            reader = csv.reader(f)
+            reader = csv.DictReader(f)
 
             for row in reader:
-                (src, src_port, sequence, size, is_compressed, payload) = row
+                src = row['src']
+                src_port = row['src_port']
+                sequence = row['sequence']
+                size = row['expected_size']
+                is_compressed = row['is_compressed']
+                payload = row['payload']
+
                 t_packet = TibiaTcpPacket(
-                    src,
-                    "unknown",
-                    int(src_port),
-                    0,
-                    int(size),
-                    int(sequence),
-                    is_compressed == 'True',
-                    bytes.fromhex(payload),
-                    True,
+                        src,
+                        "unknown",
+                        int(src_port),
+                        0,
+                        int(size),
+                        int(sequence),
+                        is_compressed == 'True',
+                        bytes.fromhex(payload),
+                        True,
                 )
 
                 t_packet.decrypt(Xtea(keys))
 
-                if t_packet.is_compressed and t_packet.sequence <= 308:
+                if t_packet.is_compressed:
                     t_packet.decompress(self.decompressor)
 
-                if t_packet.sequence <= 308 and t_packet.is_compressed is False:
+                if t_packet.is_compressed is False:
                     t_packet.parse()
                     print(t_packet)
                     print("-" * 20)
