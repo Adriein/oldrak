@@ -47,8 +47,17 @@ class GameSession:
                     missing_bytes = raw[:missing_offset]
 
                     prev_packet.payload += missing_bytes
+                    prev_packet.actual_size = len(prev_packet.payload)
+
+                    if prev_packet.is_incomplete():
+                        incomplete_buff.put_nowait(prev_packet.to_bytes())
+
+                        continue
 
                     next_bytes = raw[missing_offset:]
+
+                    if len(next_bytes) == 0:
+                        continue
 
                     t_packet = TibiaTcpPacket.from_bytes(stream_id=sid, raw_bytes=next_bytes)
 
@@ -65,7 +74,7 @@ class GameSession:
                     t_packet.sequence,
                     t_packet.expected_size,
                     t_packet.is_compressed,
-                    t_packet.payload.hex()
+                    t_packet.payload.hex(" ")
                 ])
 
 class SessionDebugger:
@@ -92,7 +101,8 @@ class SessionDebugger:
                     int(size),
                     int(sequence),
                     is_compressed == 'True',
-                    bytes.fromhex(payload)
+                    bytes.fromhex(payload),
+                    True,
                 )
 
                 t_packet.decrypt(Xtea(keys))

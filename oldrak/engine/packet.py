@@ -66,6 +66,29 @@ class TibiaTcpPacket:
             is_valid,
         )
 
+    def to_bytes(self) -> bytes:
+        """
+        Convert the TibiaTcpPacket back to raw bytes.
+
+        Returns:
+            bytes: The raw packet bytes including header and payload
+        """
+        # Calculate size in multiples of 8 bytes
+        size_value = self.expected_size // 8
+
+        # Build header (6 bytes total)
+        size_bytes = size_value.to_bytes(2, sys.byteorder, signed=False)
+        sequence_bytes = self.sequence.to_bytes(2, sys.byteorder, signed=False)
+
+        # Compression flag
+        compression_flag = 0xC000 if self.is_compressed else 0x0000
+        compression_bytes = compression_flag.to_bytes(2, sys.byteorder, signed=False)
+
+        # Combine header and payload
+        raw_bytes = size_bytes + sequence_bytes + compression_bytes + self.payload
+
+        return raw_bytes
+
     def __repr__(self) -> str:
         return (
             f"{self.src}:{self.src_port} -> {self.dest}:{self.dest_port}\n"
