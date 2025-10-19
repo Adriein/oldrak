@@ -58,10 +58,8 @@ class GameSession:
 
                     next_bytes = raw[missing_offset:]
 
-                    if len(next_bytes) == 0:
-                        continue
-
-                    t_packet = TibiaTcpPacket.from_bytes(stream_id=sid, raw_bytes=next_bytes)
+                    if len(next_bytes) != 0:
+                        t_packet = TibiaTcpPacket.from_bytes(stream_id=sid, raw_bytes=next_bytes)
 
                 if t_packet.is_incomplete():
                     incomplete_buff = self._incomplete_buffer[sid]
