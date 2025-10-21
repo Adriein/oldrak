@@ -38,7 +38,6 @@ class GameSession:
                     incomplete_buff = self._incomplete_buffer[sid]
 
                     if incomplete_buff.empty():
-                        print(t_packet)
                         raise Exception("Invalid packet in the sequence")
 
                     prev_bytes = incomplete_buff.get_nowait()
