@@ -13,7 +13,7 @@ class Network:
         self.incomplete_buffer: TcpStreamSet = TcpStreamSet()
         self.sniffer = None
 
-    def sniff(self) -> None:
+    def async_sniff(self) -> None:
         self.sniffer = AsyncSniffer(filter="tcp port 7171", prn= self._handle_tcp, store=0)
         self.sniffer.start()
 

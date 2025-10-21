@@ -22,7 +22,7 @@ class Process:
         if self._network.sniffer is not None:
             return self._network.tcp_streams
 
-        self._network.sniff()
+        self._network.async_sniff()
 
         return self._network.tcp_streams
 
