@@ -1,4 +1,6 @@
 import csv
+import queue
+import sys
 import zlib
 from datetime import datetime
 from pathlib import Path
@@ -115,6 +117,100 @@ class SessionDebugger:
     def __init__(self):
         self.decompressor = zlib.decompressobj(wbits=-zlib.MAX_WBITS)
 
+    def replay_raw(self, session_id: str):
+        session_file = Path(f"{session_id}_tcp_session.csv")
+        keys_file = Path("key.txt")
+
+        result = queue.Queue()
+
+        with keys_file.open(mode='r', newline='', encoding='utf-8') as kf:
+            keys = [int(k) for k in kf.read().split(',') if k.strip()]
+
+        with session_file.open(mode='r', newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+
+            incomplete_packet = None
+
+            for row in reader:
+                raw_bytes = bytes.fromhex(row['raw'])
+
+                if incomplete_packet is not None:
+                    current_packet_size = len(incomplete_packet.payload)
+                    incoming_size = len(raw_bytes)
+
+                    incomplete_packet.payload += raw_bytes
+
+                    if incomplete_packet.size == len(incomplete_packet.payload):
+                        result.put_nowait(incomplete_packet)
+
+                        incomplete_packet = None
+
+                        continue
+
+
+                    continue
+
+                # The first 2 bytes are the size of the payload in multiples of 8 bytes in little endian.
+                size = int.from_bytes(raw_bytes[:2], sys.byteorder, signed=False) * 8
+
+                # Next 2 bytes = sequence number
+                sequence = int.from_bytes(raw_bytes[2:4], sys.byteorder, signed=False)
+
+                # Next 2 bytes = compression flag
+                compression_flag = raw_bytes[4:6]
+
+                compressed_literal_flag = 0xC000.to_bytes(2, sys.byteorder, signed=False)
+                not_compressed_literal_flag = 0x0000.to_bytes(2, sys.byteorder, signed=False)
+
+                is_compressed = compression_flag == compressed_literal_flag
+                is_valid = is_compressed or compression_flag == not_compressed_literal_flag
+
+                # The rest = payload
+                payload = raw_bytes[6:]
+
+                if len(payload) < size:
+                    incomplete_packet = RawPacket(sequence, size, is_compressed, payload)
+
+                    continue
+
+                if len(payload) > size:
+                    raise Exception("Not implemented")
+
+
+
+                result.put_nowait(RawPacket(sequence, size, is_compressed, payload))
+
+        xtea = Xtea(keys)
+
+        while not result.empty():
+            raw = result.get_nowait()
+
+            decrypted_payload = xtea.decrypt(raw.payload)
+
+            # Remove junk bytes, the first byte indicates the byte padding (0-7)
+            padding = int.from_bytes(decrypted_payload[:1], "little", signed=False)
+
+            if 0 <= padding <= 7:
+                payload = decrypted_payload[1: len(decrypted_payload) - padding]
+
+                if raw.is_compressed:
+                    out = self.decompressor.decompress(payload)
+
+                    print(
+                        f"Size: {raw.size} (bytes) | Seq: {raw.seq} | Com: {raw.is_compressed}\n"
+                        f"Payload ({len(raw.payload)} bytes): {out.hex(" ")}\n"
+                    )
+
+
+                return
+
+            print(
+                f"Size: {raw.size} (bytes) | Seq: {raw.seq} | Com: {raw.is_compressed}\n"
+                f"Payload ({len(raw.payload)} bytes): {raw.hex(" ")}\n"
+            )
+
+
+
     def replay(self, session_id: str) -> None:
         session_file = Path(f"{session_id}_tcp_session.csv")
         keys_file = Path("key.txt")
@@ -162,3 +258,9 @@ class SessionDebugger:
                 #     print("-" * 20)
 
 
+class RawPacket:
+    def __init__(self, seq: int, size: int, is_compressed: bool, payload: bytes):
+        self.seq = seq
+        self.size = size
+        self.is_compressed = is_compressed
+        self.payload = payload
