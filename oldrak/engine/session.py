@@ -14,6 +14,24 @@ class GameSession:
         self._tcp_stream = tcp_stream
         self._incomplete_buffer = TcpStreamSet()
 
+
+    def flush_raw(self) -> None:
+        timestamp = datetime.now().strftime("%Y%m%d")
+
+        session_file = Path(f"{timestamp}_tcp_session.csv")
+
+        sid, buf = self._tcp_stream.get_server_stream()
+
+        with session_file.open('w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+
+            writer.writerow(['raw'])
+
+            while not buf.empty():
+                raw = buf.get_nowait()
+
+                writer.writerow([raw.hex(" ")])
+
     def flush(self, record = False) -> None:
         if not record:
             return
