@@ -12,6 +12,7 @@ class Network:
         self.tcp_streams: TcpStreamSet = TcpStreamSet()
         self.incomplete_buffer: TcpStreamSet = TcpStreamSet()
         self.sniffer = None
+        self.last_packet = None
 
     def async_sniff(self) -> None:
         self.sniffer = AsyncSniffer(filter="tcp port 7171", prn= self._handle_tcp, store=0)
@@ -25,10 +26,12 @@ class Network:
 
                 buf = self.tcp_streams[stream_id]
 
-                if buf is None:
+                if buf is None or payload == self.last_packet:
                     return
 
                 buf.put_nowait(payload)
+
+                self.last_packet = payload
 
                 return
 
