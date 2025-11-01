@@ -176,6 +176,8 @@ class SessionDebugger:
                     continue
 
                 if len(payload) > size:
+                    print(payload[:size].hex(" "))
+                    print(payload[size:].hex(" "))
                     raise Exception("Not implemented")
 
                 result.put_nowait(RawPacket(sequence, size, is_compressed, payload))
