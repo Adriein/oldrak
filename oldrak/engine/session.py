@@ -135,9 +135,6 @@ class SessionDebugger:
                 raw_bytes = bytes.fromhex(row['raw'])
 
                 if incomplete_packet is not None:
-                    current_packet_size = len(incomplete_packet.payload)
-                    incoming_size = len(raw_bytes)
-
                     incomplete_packet.payload += raw_bytes
 
                     if incomplete_packet.size == len(incomplete_packet.payload):
@@ -176,8 +173,6 @@ class SessionDebugger:
                 if len(payload) > size:
                     raise Exception("Not implemented")
 
-
-
                 result.put_nowait(RawPacket(sequence, size, is_compressed, payload))
 
         xtea = Xtea(keys)
@@ -191,8 +186,9 @@ class SessionDebugger:
             padding = int.from_bytes(decrypted_payload[:1], "little", signed=False)
 
             if 0 <= padding <= 7:
-                payload = decrypted_payload[1: len(decrypted_payload) - padding]
-
+                payload = decrypted_payload[1:-padding] if padding > 0 else decrypted_payload[1:]
+                print(len(decrypted_payload))
+                print(len(payload))
                 if raw.is_compressed:
                     out = self.decompressor.decompress(payload)
 
@@ -201,12 +197,11 @@ class SessionDebugger:
                         f"Payload ({len(raw.payload)} bytes): {out.hex(" ")}\n"
                     )
 
-
-                return
+                continue
 
             print(
                 f"Size: {raw.size} (bytes) | Seq: {raw.seq} | Com: {raw.is_compressed}\n"
-                f"Payload ({len(raw.payload)} bytes): {raw.hex(" ")}\n"
+                f"Payload ({len(raw.payload)} bytes): {raw.payload.hex(" ")}\n"
             )
 
 
