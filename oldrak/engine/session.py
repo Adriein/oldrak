@@ -187,8 +187,7 @@ class SessionDebugger:
 
             if 0 <= padding <= 7:
                 payload = decrypted_payload[1:-padding] if padding > 0 else decrypted_payload[1:]
-                print(len(decrypted_payload))
-                print(len(payload))
+
                 if raw.is_compressed:
                     out = self.decompressor.decompress(payload)
 
