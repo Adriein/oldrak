@@ -131,8 +131,13 @@ class SessionDebugger:
 
             incomplete_packet = None
 
-            for row in reader:
-                raw_bytes = bytes.fromhex(row['raw'])
+            for index, row in enumerate(reader):
+                raw_bytes = bytes.fromhex(row['raw'].replace(" ", ""))
+
+                if index == 0:
+                    print(raw_bytes)
+
+                    continue
 
                 if incomplete_packet is not None:
                     incomplete_packet.payload += raw_bytes
@@ -180,21 +185,21 @@ class SessionDebugger:
         while not result.empty():
             raw = result.get_nowait()
 
-            decrypted_payload = xtea.decrypt(raw.payload)
+            payload = xtea.decrypt(raw.payload)
 
             # Remove junk bytes, the first byte indicates the byte padding (0-7)
-            padding = int.from_bytes(decrypted_payload[:1], "little", signed=False)
+            padding = int.from_bytes(payload[:1], "little", signed=False)
 
             if 0 <= padding <= 7:
-                payload = decrypted_payload[1:-padding] if padding > 0 else decrypted_payload[1:]
+                payload = payload[1:-padding] if padding > 0 else payload[1:]
 
-                if raw.is_compressed:
-                    out = self.decompressor.decompress(payload)
+            if raw.is_compressed:
+                out = self.decompressor.decompress(payload)
 
-                    print(
-                        f"Size: {raw.size} (bytes) | Seq: {raw.seq} | Com: {raw.is_compressed}\n"
-                        f"Payload ({len(raw.payload)} bytes): {out.hex(" ")}\n"
-                    )
+                print(
+                    f"Size: {raw.size} (bytes) | Seq: {raw.seq} | Com: {raw.is_compressed}\n"
+                    f"Payload ({len(raw.payload)} bytes): {out.hex(" ")}\n"
+                )
 
                 continue
 
