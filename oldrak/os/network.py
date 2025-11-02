@@ -79,9 +79,6 @@ class TcpStreamSet:
     def __getitem__(self, stream_id: tuple[str, int, str, int]) -> Optional[queue.Queue[bytes]]:
         src, src_port, dest, dest_port = stream_id
 
-        if dest_port != TIBIA_SERVER_PORT:
-            return None
-
         has_to_ignore = any(
             str_id[2] != dest and str_id[3] == TIBIA_SERVER_PORT
             for str_id in self.set.keys()
@@ -100,7 +97,7 @@ class TcpStreamSet:
 
     def get_server_stream(self) -> Tuple[tuple[str, int, str, int], queue.Queue[bytes]]:
         try:
-            server_stream_id = next(stream_id for stream_id in self.set.keys() if stream_id[3] == TIBIA_SERVER_PORT)
+            server_stream_id = next(stream_id for stream_id in self.set.keys() if stream_id[1] == TIBIA_SERVER_PORT)
 
             return server_stream_id, self[server_stream_id]
 

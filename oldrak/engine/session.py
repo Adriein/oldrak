@@ -9,7 +9,7 @@ from typing import Optional
 from oldrak.os import TcpStreamSet
 from oldrak.engine.packet import TibiaTcpPacket
 from oldrak.os.decryption import Xtea
-from oldrak.shared import ServerPacketType
+from oldrak.shared import ServerPacketType, ClientPacketType
 
 
 class GameSession:
@@ -246,7 +246,7 @@ class SessionDebugger:
 
             command_byte = payload[:1]
             try:
-                command_type = ServerPacketType(int.from_bytes(command_byte, sys.byteorder))
+                command_type = ClientPacketType(int.from_bytes(command_byte, sys.byteorder))
                 payload = payload[1:]
             except (TypeError, ValueError):
                 command_type = f"Unknown: {command_byte.hex()}"
