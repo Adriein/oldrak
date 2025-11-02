@@ -80,7 +80,7 @@ class TcpStreamSet:
         src, src_port, dest, dest_port = stream_id
 
         has_to_ignore = any(
-            str_id[2] != dest and str_id[3] == TIBIA_SERVER_PORT
+            str_id[0] != src and str_id[1] == TIBIA_SERVER_PORT
             for str_id in self.set.keys()
         )
 
