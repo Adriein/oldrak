@@ -9,6 +9,7 @@ from typing import Optional
 from oldrak.os import TcpStreamSet
 from oldrak.engine.packet import TibiaTcpPacket
 from oldrak.os.decryption import Xtea
+from oldrak.shared import ServerPacketType
 
 
 class GameSession:
@@ -176,9 +177,47 @@ class SessionDebugger:
                     continue
 
                 if len(payload) > size:
-                    print(payload[:size].hex(" "))
-                    print(payload[size:].hex(" "))
-                    raise Exception("Not implemented")
+                    current_payload = payload
+                    current_size = size
+
+                    while len(current_payload) > current_size:
+                        result.put_nowait(RawPacket(sequence, current_size, is_compressed, current_payload[:current_size]))
+
+                        next_payload = current_payload[current_size:]
+
+                        a = len(next_payload)
+
+                        # The first 2 bytes are the size of the payload in multiples of 8 bytes in little endian.
+                        size = int.from_bytes(next_payload[:2], sys.byteorder, signed=False) * 8
+
+                        # Next 2 bytes = sequence number
+                        sequence = int.from_bytes(next_payload[2:4], sys.byteorder, signed=False)
+
+                        # Next 2 bytes = compression flag
+                        compression_flag = next_payload[4:6]
+
+                        compressed_literal_flag = 0xC000.to_bytes(2, sys.byteorder, signed=False)
+
+                        is_compressed = compression_flag == compressed_literal_flag
+
+                        payload = next_payload[6:]
+
+                        if len(payload) > size:
+                            current_payload = payload
+                            current_size = size
+
+                            continue
+
+                        if len(payload) < size:
+                            incomplete_packet = RawPacket(sequence, size, is_compressed, payload)
+
+                            break
+
+                        result.put_nowait(RawPacket(sequence, size, is_compressed, payload))
+
+                        break
+
+                    continue
 
                 result.put_nowait(RawPacket(sequence, size, is_compressed, payload))
 
@@ -205,9 +244,17 @@ class SessionDebugger:
 
                 continue
 
+            command_byte = payload[:1]
+            try:
+                command_type = ServerPacketType(int.from_bytes(command_byte, sys.byteorder))
+                payload = payload[1:]
+            except (TypeError, ValueError):
+                command_type = f"Unknown: {command_byte.hex()}"
+                payload = payload[1:]
+
             print(
-                f"Size: {raw.size} (bytes) | Seq: {raw.seq} | Com: {raw.is_compressed}\n"
-                f"Payload ({len(raw.payload)} bytes): {raw.payload.hex(" ")}\n"
+                f"Size: {raw.size} (bytes) | Seq: {raw.seq} | Com: {raw.is_compressed} | Type: {command_type}\n"
+                f"Payload ({len(raw.payload)} bytes): {payload.hex(" ")}\n"
             )
 
 
