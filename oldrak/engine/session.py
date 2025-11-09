@@ -206,37 +206,38 @@ class SessionDebugger:
                     print(f"Executable not found: {decompressor_exe}")
                     continue
 
-                command_byte = payload[:1]
+            command_byte = payload[:1]
 
-                try:
-                    command_type = ServerPacketType(int.from_bytes(command_byte, sys.byteorder, signed=False))
-                    print(f"Packet type: {command_type}")
-                    payload = payload[1:]
-                except (TypeError, ValueError):
-                    print(f"Unknown: {command_byte.hex()}")
+            try:
+                command_type = ServerPacketType(int.from_bytes(command_byte, sys.byteorder, signed=False))
+                print(f"Packet type: {command_type}")
+                payload = payload[1:]
+            except (TypeError, ValueError):
+                print(f"Unknown: {command_byte.hex()}")
 
-                    payload = payload[1:]
+                payload = payload[1:]
 
-                print(f"Packet payload: {payload.hex()}")
-                # unpack_instructions = '<i2s?h'
-                #
-                # unpacked_data = struct.unpack(unpack_instructions, payload[1:10])
-                #
-                # int32_val = unpacked_data[0]
-                # string_val = unpacked_data[1]
-                # bool_val = unpacked_data[2]
-                # int16_val = unpacked_data[3]
-                #
-                # print(f"Bytes used (First 9): {b[0:9].hex(' ', 1)}")
-                # print("-" * 30)
-                # print(f"1. int32 (4 bytes):      {int32_val}")
-                # print(f"2. 2-byte string (bytes):{string_val} (Decoded: {string_val.decode('ascii')!r})")
-                # print(f"3. bool (1 byte):        {bool_val}")
-                # print(f"4. int16 (2 bytes):      {int16_val}")
-                #
-                #
-                #
-                # print(b)
+            print(f"Packet payload: {payload.hex(" ")}")
+
+            # unpack_instructions = '<i2s?h'
+            #
+            # unpacked_data = struct.unpack(unpack_instructions, payload[1:10])
+            #
+            # int32_val = unpacked_data[0]
+            # string_val = unpacked_data[1]
+            # bool_val = unpacked_data[2]
+            # int16_val = unpacked_data[3]
+            #
+            # print(f"Bytes used (First 9): {b[0:9].hex(' ', 1)}")
+            # print("-" * 30)
+            # print(f"1. int32 (4 bytes):      {int32_val}")
+            # print(f"2. 2-byte string (bytes):{string_val} (Decoded: {string_val.decode('ascii')!r})")
+            # print(f"3. bool (1 byte):        {bool_val}")
+            # print(f"4. int16 (2 bytes):      {int16_val}")
+            #
+            #
+            #
+            # print(b)
 
     def replay(self, session_id: str) -> None:
         session_file = Path(f"{session_id}_tcp_session.csv")
