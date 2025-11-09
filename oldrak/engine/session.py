@@ -1,6 +1,8 @@
 import csv
+import os
 import queue
 import struct
+import subprocess
 import sys
 import zlib
 from datetime import datetime
@@ -178,7 +180,7 @@ class SessionDebugger:
 
         xtea = Xtea(keys)
 
-        for index, raw in enumerate(result):
+        for raw in result:
             payload = xtea.decrypt(raw.payload)
 
             # Remove junk bytes, the first byte indicates the byte padding (0-7)
@@ -188,34 +190,60 @@ class SessionDebugger:
                 payload = payload[1:-padding] if padding > 0 else payload[1:]
 
             if raw.is_compressed:
-                print(f"Seq {raw.seq}: compressed={raw.is_compressed}, size={raw.size}, payload={payload.hex(" ")}")
-
-                FORMAT_STRING = '<i2s?h'
+                decompressor_exe = os.path.expanduser("~/Dev/tpacket-decompressor/bin/Debug/net9.0/tpacket-decompressor")
 
                 try:
-                    command_type = ServerPacketType(int.from_bytes(b[:1], sys.byteorder))
+                    result = subprocess.run(
+                        args=[decompressor_exe, f"--input={payload.hex(" ")}"],
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                        timeout=60  # Optional: timeout after 30 seconds
+                    )
+
+                    payload = bytes.fromhex(result.stdout.replace(" ", ""))
+                except subprocess.CalledProcessError as e:
+                    print(f"Error running decompressor: {e}")
+                    print(f"stderr: {e.stderr}")
+                    continue
+                except subprocess.TimeoutExpired:
+                    print("Decompressor timed out")
+                    continue
+                except FileNotFoundError:
+                    print(f"Executable not found: {decompressor_exe}")
+                    continue
+
+                command_byte = payload[:1]
+
+                try:
+                    command_type = ServerPacketType(int.from_bytes(command_byte, sys.byteorder, signed=False))
+                    print(f"Packet type: {command_type}")
                     payload = payload[1:]
                 except (TypeError, ValueError):
-                    command_type = f"Unknown: {b[:1].hex()}"
+                    print(f"Unknown: {command_byte.hex()}")
+
                     payload = payload[1:]
 
-                unpacked_data = struct.unpack(FORMAT_STRING, b[1:10])
-
-                int32_val = unpacked_data[0]
-                string_val = unpacked_data[1]
-                bool_val = unpacked_data[2]
-                int16_val = unpacked_data[3]
-
-                print(f"Bytes used (First 9): {b[0:9].hex(' ', 1)}")
-                print("-" * 30)
-                print(f"1. int32 (4 bytes):      {int32_val}")
-                print(f"2. 2-byte string (bytes):{string_val} (Decoded: {string_val.decode('ascii')!r})")
-                print(f"3. bool (1 byte):        {bool_val}")
-                print(f"4. int16 (2 bytes):      {int16_val}")
-
-
-
-                print(b)
+                print(f"Packet payload: {payload.hex()}")
+                # unpack_instructions = '<i2s?h'
+                #
+                # unpacked_data = struct.unpack(unpack_instructions, payload[1:10])
+                #
+                # int32_val = unpacked_data[0]
+                # string_val = unpacked_data[1]
+                # bool_val = unpacked_data[2]
+                # int16_val = unpacked_data[3]
+                #
+                # print(f"Bytes used (First 9): {b[0:9].hex(' ', 1)}")
+                # print("-" * 30)
+                # print(f"1. int32 (4 bytes):      {int32_val}")
+                # print(f"2. 2-byte string (bytes):{string_val} (Decoded: {string_val.decode('ascii')!r})")
+                # print(f"3. bool (1 byte):        {bool_val}")
+                # print(f"4. int16 (2 bytes):      {int16_val}")
+                #
+                #
+                #
+                # print(b)
 
     def replay(self, session_id: str) -> None:
         session_file = Path(f"{session_id}_tcp_session.csv")
