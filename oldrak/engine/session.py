@@ -1,6 +1,5 @@
 import csv
 import os
-import queue
 import struct
 import subprocess
 import sys
@@ -12,7 +11,7 @@ from typing import Optional
 from oldrak.os import TcpStreamSet
 from oldrak.engine.packet import TibiaTcpPacket
 from oldrak.os.decryption import Xtea
-from oldrak.shared import ServerPacketType, ClientPacketType
+from oldrak.shared import ServerPacketType
 
 
 class GameSession:
