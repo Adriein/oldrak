@@ -156,13 +156,7 @@ class SessionDebugger:
 
                 if sequence_delta > 1 or not is_valid:
                     prev_packet = result.pop()
-                    if prev_packet.seq == 2:
-                        print(prev_packet.payload.hex(" "))
-
                     prev_packet.payload += raw_bytes
-
-                    if prev_packet.seq == 2:
-                        print(prev_packet.payload.hex(" "))
 
                     result.append(prev_packet)
 
