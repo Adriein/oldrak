@@ -179,18 +179,16 @@ class SessionDebugger:
         xtea = Xtea(keys)
 
         for index, raw in enumerate(result):
-            c = len(raw.payload)
             payload = xtea.decrypt(raw.payload)
-            a = len(payload)
+
             # Remove junk bytes, the first byte indicates the byte padding (0-7)
             padding = int.from_bytes(payload[:1], "little", signed=False)
 
             if 0 <= padding <= 7:
                 payload = payload[1:-padding] if padding > 0 else payload[1:]
-                b = len(payload)
+
             if raw.is_compressed:
                 print(f"Seq {raw.seq}: compressed={raw.is_compressed}, size={raw.size}, payload={payload.hex(" ")}")
-                b = bytes.fromhex("AA 45 B9 01 00 00 00 4C 6F 6D 70 65 20 44 72 75 69 64 00 9E 01 07 07 00 00 00 61 6D".replace(" ", ""))
 
                 FORMAT_STRING = '<i2s?h'
 
@@ -218,32 +216,6 @@ class SessionDebugger:
 
 
                 print(b)
-
-            # if raw.is_compressed:
-            #     print("RAW payload")
-            #     print(payload.hex(" "))
-            #     print("-----------------------------------------------------------------------------------------")
-            #     out = self.decompressor.decompress(payload)
-            #
-            #     print(
-            #         f"Size: {raw.size} (bytes) | Seq: {raw.seq} | Com: {raw.is_compressed}\n"
-            #         f"Payload ({len(raw.payload)} bytes): {out.hex(" ")}\n"
-            #     )
-            #
-            #     continue
-            #
-            # command_byte = payload[:1]
-            # try:
-            #     command_type = ClientPacketType(int.from_bytes(command_byte, sys.byteorder))
-            #     payload = payload[1:]
-            # except (TypeError, ValueError):
-            #     command_type = f"Unknown: {command_byte.hex()}"
-            #     payload = payload[1:]
-            #
-            # print(
-            #     f"Size: {raw.size} (bytes) | Seq: {raw.seq} | Com: {raw.is_compressed} | Type: {command_type}\n"
-            #     f"Payload ({len(raw.payload)} bytes): {payload.hex(" ")}\n"
-            # )
 
     def replay(self, session_id: str) -> None:
         session_file = Path(f"{session_id}_tcp_session.csv")
